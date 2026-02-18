@@ -111,24 +111,24 @@ export default function ActivityPanel({ caregiverId, seniors, onClose }: Activit
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.5)" }}>
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.45)" }}>
       {/* Backdrop tap to close */}
       <div className="flex-1" onClick={onClose} />
 
       {/* Panel */}
       <div
-        className="rounded-t-3xl bg-background shadow-xl flex flex-col animate-bounce-in"
-        style={{ maxHeight: "80vh" }}
+        className="rounded-t-3xl bg-background shadow-xl flex flex-col animate-slide-up"
+        style={{ maxHeight: "82vh" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-bold">Recent Activity</h2>
-            <p className="text-xs text-muted-foreground">All events from your loved ones</p>
+            <h2 className="text-xl font-black">Recent Activity</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Updates from your loved ones</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full bg-muted"
+            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
           >
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
