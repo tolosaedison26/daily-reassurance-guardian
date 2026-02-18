@@ -24,7 +24,24 @@ export default function CaregiverDashboard() {
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    if (user) loadSeniors();
+    if (!user) return;
+    loadSeniors();
+
+    // Real-time: refresh when any check-in changes for connected seniors
+    const channel = supabase
+      .channel("caregiver-checkins")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_check_ins" },
+        () => {
+          loadSeniors();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const loadSeniors = async () => {
