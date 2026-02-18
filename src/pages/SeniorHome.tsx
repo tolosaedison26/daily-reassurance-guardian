@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
-import { LogOut, Music, Settings } from "lucide-react";
+import { LogOut, Music, Settings, Bell } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
+import SeniorActivityPanel from "@/components/SeniorActivityPanel";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -17,6 +18,7 @@ export default function SeniorHome() {
   const [showSettings, setShowSettings] = useState(false);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
 
   useEffect(() => {
@@ -79,6 +81,13 @@ export default function SeniorHome() {
           </span>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowActivity(true)}
+            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center relative"
+            aria-label="My activity"
+          >
+            <Bell className="w-5 h-5 text-muted-foreground" />
+          </button>
           <button
             onClick={() => setShowSettings(true)}
             className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
@@ -217,6 +226,13 @@ export default function SeniorHome() {
         <ReminderSettingsModal
           seniorId={user?.id || ""}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showActivity && user && (
+        <SeniorActivityPanel
+          seniorId={user.id}
+          onClose={() => setShowActivity(false)}
         />
       )}
     </div>
