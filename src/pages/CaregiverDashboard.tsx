@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, Plus, CheckCircle, XCircle, Clock, Search, Users, Bell } from "lucide-react";
+import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 
 interface SeniorStatus {
@@ -19,8 +19,9 @@ export default function CaregiverDashboard() {
   const { user, profile, signOut } = useAuth();
   const [seniors, setSeniors] = useState<SeniorStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchEmail, setSearchEmail] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ user_id: string; full_name: string }>>([]);
+  const [inviteCode, setInviteCode] = useState("");
+  const [connectError, setConnectError] = useState("");
+  const [connectSuccess, setConnectSuccess] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
@@ -54,7 +55,9 @@ export default function CaregiverDashboard() {
           senior_id: conn.senior_id,
           full_name: p?.full_name || "Unknown",
           status: checkIn ? "checked" : "not-checked",
-          last_check_in: checkIn ? new Date(checkIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null,
+          last_check_in: checkIn
+            ? new Date(checkIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : null,
         };
       })
     );
@@ -63,26 +66,30 @@ export default function CaregiverDashboard() {
     setLoading(false);
   };
 
-  const handleSearch = async () => {
-    if (!searchEmail.trim()) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("user_id, full_name")
-      .eq("role", "senior")
-      .ilike("full_name", `%${searchEmail}%`)
-      .limit(5);
-    setSearchResults(data || []);
-  };
-
-  const handleConnect = async (seniorId: string) => {
-    if (!user) return;
+  const handleConnectWithCode = async () => {
+    if (!user || !inviteCode.trim()) return;
+    const cleanCode = inviteCode.toUpperCase().trim();
     setConnecting(true);
-    await supabase.from("senior_connections").insert({ caregiver_id: user.id, senior_id: seniorId, status: "active" });
+    setConnectError("");
+
+    const { data: result, error } = await supabase.rpc("connect_via_invite_code", {
+      p_code: cleanCode,
+      p_caregiver_id: user.id,
+    });
+
+    if (error || !result) {
+      setConnectError("Something went wrong. Please try again.");
+    } else if ((result as any).success) {
+      setConnectSuccess(true);
+      setShowSearch(false);
+      setInviteCode("");
+      setTimeout(() => setConnectSuccess(false), 3000);
+      loadSeniors();
+    } else {
+      setConnectError((result as any).error || "Failed to connect. Please check the code.");
+    }
+
     setConnecting(false);
-    setShowSearch(false);
-    setSearchEmail("");
-    setSearchResults([]);
-    loadSeniors();
   };
 
   const checkedCount = seniors.filter((s) => s.status === "checked").length;
@@ -100,7 +107,6 @@ export default function CaregiverDashboard() {
           </span>
         </div>
         <div className="flex gap-2">
-          {/* Notification bell */}
           <button
             onClick={() => setShowActivity(true)}
             className="w-10 h-10 rounded-full bg-muted flex items-center justify-center relative"
@@ -131,6 +137,17 @@ export default function CaregiverDashboard() {
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
+
+      {/* Connection success toast */}
+      {connectSuccess && (
+        <div className="mx-5 mb-4 bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3 animate-bounce-in">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="font-black text-sm">Connected!</p>
+            <p className="text-xs text-muted-foreground">You can now see their daily check-ins.</p>
+          </div>
+        </div>
+      )}
 
       {/* Summary row */}
       {seniors.length > 0 && (
@@ -175,9 +192,9 @@ export default function CaregiverDashboard() {
             <div className="text-muted-foreground animate-pulse text-lg font-semibold">Loading…</div>
           </div>
         ) : seniors.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-52 text-center gap-4">
+          <div className="flex flex-col items-center justify-center h-48 text-center gap-4">
             <div
-              className="w-18 h-18 w-16 h-16 rounded-full flex items-center justify-center"
+              className="w-16 h-16 rounded-full flex items-center justify-center"
               style={{ background: "hsl(var(--secondary))" }}
             >
               <Users className="w-8 h-8" style={{ color: "hsl(var(--primary))" }} />
@@ -185,7 +202,7 @@ export default function CaregiverDashboard() {
             <div>
               <p className="font-black text-xl">No loved ones added yet</p>
               <p className="text-muted-foreground text-sm mt-1">
-                Tap "Add a Loved One" to start monitoring
+                Ask them to open the app and share their invite code
               </p>
             </div>
           </div>
@@ -198,12 +215,11 @@ export default function CaregiverDashboard() {
                 style={{
                   borderColor:
                     senior.status === "checked"
-                      ? "hsl(var(--status-checked) / 0.25)"
+                      ? "hsl(var(--status-checked) / 0.3)"
                       : "hsl(var(--border))",
                 }}
               >
                 <div className="flex items-center gap-4">
-                  {/* Avatar initial */}
                   <div
                     className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shrink-0"
                     style={{
@@ -236,7 +252,6 @@ export default function CaregiverDashboard() {
                     )}
                   </div>
 
-                  {/* Badge */}
                   <div
                     className="shrink-0 px-3 py-1.5 rounded-full text-xs font-black"
                     style={{
@@ -259,10 +274,10 @@ export default function CaregiverDashboard() {
         )}
       </div>
 
-      {/* Add senior */}
+      {/* Add loved one — invite code entry */}
       <div className="px-5 pb-10 mt-5">
         <Button
-          onClick={() => setShowSearch(!showSearch)}
+          onClick={() => { setShowSearch(!showSearch); setConnectError(""); }}
           className="w-full h-14 text-base font-black rounded-2xl border-0 shadow-btn"
           style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
         >
@@ -272,53 +287,39 @@ export default function CaregiverDashboard() {
 
         {showSearch && (
           <div className="mt-3 bg-card rounded-2xl p-5 border border-border shadow-card animate-bounce-in">
-            <p className="font-black text-base mb-3">Find a senior by name</p>
-            <div className="flex gap-2 mb-2">
-              <Input
-                placeholder="Search by full name…"
-                value={searchEmail}
-                onChange={(e) => setSearchEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="h-12 rounded-xl text-base"
-              />
-              <Button
-                onClick={handleSearch}
-                variant="outline"
-                className="h-12 px-4 rounded-xl border-border"
-              >
-                <Search className="w-4 h-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              The senior must have an account with the "Senior" role.
+            <p className="font-black text-base mb-1">Enter Invite Code</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.
             </p>
-            {searchResults.map((result) => (
-              <div
-                key={result.user_id}
-                className="flex items-center justify-between p-3 rounded-xl bg-muted mb-2"
-              >
-                <span className="font-bold">{result.full_name}</span>
-                <Button
-                  size="sm"
-                  onClick={() => handleConnect(result.user_id)}
-                  disabled={connecting}
-                  className="h-8 px-4 rounded-lg text-sm font-black border-0"
-                  style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
-                >
-                  Connect
-                </Button>
+            <Input
+              placeholder="e.g. PARK-7291"
+              value={inviteCode}
+              onChange={(e) => {
+                setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""));
+                setConnectError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()}
+              className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3"
+              maxLength={9}
+              autoCapitalize="characters"
+            />
+            {connectError && (
+              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">
+                {connectError}
               </div>
-            ))}
-            {searchResults.length === 0 && searchEmail && (
-              <p className="text-sm text-muted-foreground text-center py-2">
-                No results found. Try a different name.
-              </p>
             )}
+            <Button
+              onClick={handleConnectWithCode}
+              disabled={connecting || inviteCode.trim().length < 4}
+              className="w-full h-13 h-12 font-black rounded-xl border-0 text-base"
+              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
+            >
+              {connecting ? "Connecting…" : "Connect ✓"}
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Activity panel */}
       {showActivity && user && (
         <ActivityPanel
           caregiverId={user.id}

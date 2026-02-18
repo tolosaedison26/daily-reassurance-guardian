@@ -7,6 +7,7 @@ import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import SeniorActivityPanel from "@/components/SeniorActivityPanel";
+import InviteCodeCard from "@/components/InviteCodeCard";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -202,6 +203,9 @@ export default function SeniorHome() {
             <VoiceRecorder seniorId={user.id} onSent={() => {}} />
           </div>
         )}
+
+        {/* Invite code */}
+        {user && <InviteCodeCard seniorId={user.id} />}
 
         {/* Calm Sounds */}
         <button
