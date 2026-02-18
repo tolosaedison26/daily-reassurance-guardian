@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // INITIAL load: fast getSession() controls loading state
+    // INITIAL load: resolve loading immediately, fetch profile in background
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -61,7 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          // Don't await — let profile load in background so UI shows instantly
+          fetchProfile(session.user.id);
         }
       } finally {
         if (isMounted) setLoading(false);
