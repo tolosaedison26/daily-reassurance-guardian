@@ -134,6 +134,30 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_messages: {
+        Row: {
+          audio_path: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          senior_id: string
+        }
+        Insert: {
+          audio_path: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          senior_id: string
+        }
+        Update: {
+          audio_path?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          senior_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
