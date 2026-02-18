@@ -3,8 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Leaf, Heart } from "lucide-react";
-import natureHero from "@/assets/nature-hero.jpg";
+import { Heart } from "lucide-react";
 import { createUserProfile } from "@/lib/supabase-helpers";
 
 type Mode = "login" | "signup";
@@ -44,64 +43,63 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Hero header */}
-      <div className="relative h-48 overflow-hidden">
-        <img src={natureHero} alt="Peaceful nature" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
-        <div className="absolute inset-0 flex items-center justify-center pb-4">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Leaf className="w-6 h-6" style={{ color: "hsl(var(--primary))" }} />
-              <span className="text-2xl font-bold" style={{ color: "hsl(var(--primary-foreground))", fontFamily: "Lora, Georgia, serif", textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                Daily Guardian
-              </span>
-            </div>
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.9)", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
-              Peaceful check-ins for peace of mind
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex flex-col items-center pt-16 pb-6 px-5">
+        <span className="text-5xl mb-3">☀️</span>
+        <h1
+          className="text-3xl font-black tracking-tight"
+          style={{ color: "hsl(var(--primary))" }}
+        >
+          Daily Guardian
+        </h1>
+        <p className="text-muted-foreground text-base mt-1 text-center">
+          Simple daily check-ins for peace of mind
+        </p>
       </div>
 
-      {/* Auth card */}
-      <div className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
-        <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
-          <h2 className="text-2xl font-semibold text-center mb-1">
-            {mode === "login" ? "Welcome back" : "Create your account"}
+      {/* Card */}
+      <div className="flex-1 px-5 pb-10 max-w-md mx-auto w-full">
+        <div className="bg-card rounded-3xl p-6 shadow-card border border-border">
+          <h2 className="text-2xl font-black text-center mb-1">
+            {mode === "login" ? "Welcome back!" : "Create your account"}
           </h2>
           <p className="text-muted-foreground text-center text-sm mb-6">
             {mode === "login" ? "Sign in to continue" : "Join Daily Guardian today"}
           </p>
 
-          {/* Role selector (signup only) */}
+          {/* Role selector */}
           {mode === "signup" && (
             <div className="grid grid-cols-2 gap-3 mb-5">
               <button
                 type="button"
                 onClick={() => setRole("senior")}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
                   role === "senior"
-                    ? "border-primary bg-secondary text-secondary-foreground"
-                    : "border-border bg-card text-muted-foreground"
+                    ? "border-primary bg-secondary"
+                    : "border-border bg-card"
                 }`}
               >
-                <span className="text-2xl">🌿</span>
-                <span className="font-semibold text-sm">I'm a Senior</span>
-                <span className="text-xs text-center leading-tight opacity-70">Daily check-in for me</span>
+                <span className="text-2xl">☀️</span>
+                <span className="font-black text-sm">I'm a Senior</span>
+                <span className="text-xs text-center opacity-60 leading-tight">
+                  Daily check-in for me
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setRole("caregiver")}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
                   role === "caregiver"
-                    ? "border-primary bg-secondary text-secondary-foreground"
-                    : "border-border bg-card text-muted-foreground"
+                    ? "border-primary bg-secondary"
+                    : "border-border bg-card"
                 }`}
               >
-                <Heart className="w-6 h-6" />
-                <span className="font-semibold text-sm">I'm a Caregiver</span>
-                <span className="text-xs text-center leading-tight opacity-70">Monitor my loved ones</span>
+                <Heart className="w-7 h-7" style={{ color: role === "caregiver" ? "hsl(var(--primary))" : undefined }} />
+                <span className="font-black text-sm">I'm a Caregiver</span>
+                <span className="text-xs text-center opacity-60 leading-tight">
+                  Monitor my loved ones
+                </span>
               </button>
             </div>
           )}
@@ -109,7 +107,7 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div>
-                <Label htmlFor="fullName" className="text-base font-medium">Full Name</Label>
+                <Label htmlFor="fullName" className="text-base font-bold">Full Name</Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -117,12 +115,12 @@ export default function AuthPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Your full name"
                   required
-                  className="mt-1 h-12 text-base rounded-xl"
+                  className="mt-1 h-13 h-12 text-base rounded-xl"
                 />
               </div>
             )}
             <div>
-              <Label htmlFor="email" className="text-base font-medium">Email</Label>
+              <Label htmlFor="email" className="text-base font-bold">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -134,7 +132,7 @@ export default function AuthPage() {
               />
             </div>
             <div>
-              <Label htmlFor="password" className="text-base font-medium">Password</Label>
+              <Label htmlFor="password" className="text-base font-bold">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -148,12 +146,12 @@ export default function AuthPage() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-medium">
+              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium">
+              <div className="p-3 rounded-xl bg-secondary text-secondary-foreground text-sm font-bold">
                 {success}
               </div>
             )}
@@ -161,19 +159,26 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-14 text-lg font-bold rounded-xl gradient-btn shadow-btn border-0"
+              className="w-full h-14 text-lg font-black rounded-2xl border-0 shadow-btn mt-2"
+              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
             >
-              {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
+              {loading ? "Please wait…" : mode === "login" ? "Sign In" : "Create Account"}
             </Button>
           </form>
 
           <div className="mt-5 text-center">
             <button
               type="button"
-              onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setSuccess(""); }}
-              className="text-primary font-semibold underline-offset-4 hover:underline text-sm"
+              onClick={() => {
+                setMode(mode === "login" ? "signup" : "login");
+                setError("");
+                setSuccess("");
+              }}
+              className="text-primary font-bold text-sm underline-offset-4 hover:underline"
             >
-              {mode === "login" ? "New here? Create an account" : "Already have an account? Sign in"}
+              {mode === "login"
+                ? "New here? Create an account"
+                : "Already have an account? Sign in"}
             </button>
           </div>
         </div>
