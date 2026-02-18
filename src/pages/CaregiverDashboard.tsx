@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, Plus, CheckCircle, XCircle, Clock, Search, Users } from "lucide-react";
+import { LogOut, Plus, CheckCircle, XCircle, Clock, Search, Users, Bell } from "lucide-react";
+import ActivityPanel from "@/components/ActivityPanel";
 
 interface SeniorStatus {
   connection_id: string;
@@ -22,6 +23,7 @@ export default function CaregiverDashboard() {
   const [searchResults, setSearchResults] = useState<Array<{ user_id: string; full_name: string }>>([]);
   const [showSearch, setShowSearch] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -107,12 +109,27 @@ export default function CaregiverDashboard() {
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
           </div>
-          <button
-            onClick={signOut}
-            className="p-3 rounded-full bg-card/70 backdrop-blur-sm shadow-card"
-          >
-            <LogOut className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowActivity(true)}
+              className="p-3 rounded-full bg-card/70 backdrop-blur-sm shadow-card relative"
+              aria-label="Recent activity"
+            >
+              <Bell className="w-5 h-5 text-muted-foreground" />
+              {seniors.length > 0 && (
+                <span
+                  className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                  style={{ backgroundColor: "hsl(var(--primary))" }}
+                />
+              )}
+            </button>
+            <button
+              onClick={signOut}
+              className="p-3 rounded-full bg-card/70 backdrop-blur-sm shadow-card"
+            >
+              <LogOut className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -276,6 +293,15 @@ export default function CaregiverDashboard() {
           </div>
         )}
       </div>
+
+      {/* Activity Panel */}
+      {showActivity && user && (
+        <ActivityPanel
+          caregiverId={user.id}
+          seniors={seniors.map((s) => ({ senior_id: s.senior_id, full_name: s.full_name }))}
+          onClose={() => setShowActivity(false)}
+        />
+      )}
     </div>
   );
 }
