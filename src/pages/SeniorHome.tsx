@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { createCheckIn, getTodayCheckIn, getReminderSettings, upsertReminderSettings } from "@/lib/supabase-helpers";
+import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { LogOut, Music, Settings, CheckCircle } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
+import VoiceRecorder from "@/components/VoiceRecorder";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -188,17 +189,25 @@ export default function SeniorHome() {
         )}
 
         {status === "checked" && (
-          <div
-            className="w-full max-w-xs h-20 rounded-2xl flex items-center justify-center gap-3 border-2"
-            style={{
-              borderColor: "hsl(var(--status-checked))",
-              backgroundColor: "hsl(var(--status-checked) / 0.08)",
-            }}
-          >
-            <CheckCircle className="w-7 h-7" style={{ color: "hsl(var(--status-checked))" }} />
-            <span className="text-xl font-bold" style={{ color: "hsl(var(--status-checked))" }}>
-              Checked In ✓
-            </span>
+          <div className="w-full max-w-xs flex flex-col gap-3">
+            <div
+              className="h-20 rounded-2xl flex items-center justify-center gap-3 border-2"
+              style={{
+                borderColor: "hsl(var(--status-checked))",
+                backgroundColor: "hsl(var(--status-checked) / 0.08)",
+              }}
+            >
+              <CheckCircle className="w-7 h-7" style={{ color: "hsl(var(--status-checked))" }} />
+              <span className="text-xl font-bold" style={{ color: "hsl(var(--status-checked))" }}>
+                Checked In ✓
+              </span>
+            </div>
+            {user && (
+              <VoiceRecorder
+                seniorId={user.id}
+                onSent={() => {}}
+              />
+            )}
           </div>
         )}
       </div>
