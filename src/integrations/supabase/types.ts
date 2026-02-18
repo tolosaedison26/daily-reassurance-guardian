@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      invite_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          senior_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          senior_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          senior_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -163,6 +190,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      connect_via_invite_code: {
+        Args: { p_caregiver_id: string; p_code: string }
+        Returns: Json
+      }
+      generate_invite_code: { Args: { p_senior_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
