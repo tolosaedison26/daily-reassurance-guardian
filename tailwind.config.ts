@@ -84,6 +84,10 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-checked": "pulse-checked 2s ease-in-out infinite",
+        "pulse-pending": "pulse-pending 2s ease-in-out infinite",
+        "bounce-in": "bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "float": "float 4s ease-in-out infinite",
       },
     },
   },
