@@ -168,7 +168,11 @@ export default function CaregiverDashboard() {
           </div>
           <Button
             onClick={async () => {
-              await subscribe();
+              try {
+                await subscribe();
+              } catch (e) {
+                console.error("Enable notifications error:", e);
+              }
               if ("Notification" in window) setNotifPermission(Notification.permission);
             }}
             className="shrink-0 h-9 px-4 rounded-xl font-black border-0 text-sm"
