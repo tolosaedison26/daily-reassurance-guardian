@@ -26,12 +26,23 @@ export default function AuthPage() {
     setSuccess("");
 
     if (mode === "signup") {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName, role } },
+      });
       if (error) {
         setError(error.message);
       } else if (data.user) {
-        await createUserProfile(data.user.id, fullName, role);
-        await supabase.from("user_roles").insert({ user_id: data.user.id, role });
+        // If trigger didn't fire yet (e.g. email not confirmed), upsert profile manually
+        await supabase.from("profiles").upsert(
+          { user_id: data.user.id, full_name: fullName, role },
+          { onConflict: "user_id" }
+        );
+        await supabase.from("user_roles").upsert(
+          { user_id: data.user.id, role },
+          { onConflict: "user_id,role" }
+        );
         setSuccess("Account created! Please check your email to verify your account.");
       }
     } else {
