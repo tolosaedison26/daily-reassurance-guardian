@@ -97,7 +97,7 @@ export default function CaregiverDashboard() {
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4">
         <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export default function CaregiverDashboard() {
       )}
 
       {/* Seniors list */}
-      <div className="flex-1 px-5">
+      <div className="px-5">
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="text-muted-foreground animate-pulse text-lg font-semibold">Loading…</div>
