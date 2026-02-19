@@ -1,7 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -16,14 +14,17 @@ export function usePushNotifications() {
   const subscribe = async () => {
     if (subscribed.current) return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (!VAPID_PUBLIC_KEY) {
-      console.warn("VAPID_PUBLIC_KEY not set");
-      return;
-    }
 
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") return;
+
+      // Fetch the VAPID public key from the edge function
+      const { data: keyData, error: keyError } = await supabase.functions.invoke("get-vapid-public-key");
+      if (keyError || !keyData?.publicKey) {
+        console.error("Failed to get VAPID public key:", keyError);
+        return;
+      }
 
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
@@ -32,19 +33,20 @@ export function usePushNotifications() {
       const existing = await pushManager.getSubscription();
       const subscription = existing ?? await pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
       });
 
-      const { endpoint, keys } = subscription.toJSON() as {
+      const jsonSub = subscription.toJSON() as {
         endpoint: string;
         keys: { p256dh: string; auth: string };
       };
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       await supabase.functions.invoke("save-push-subscription", {
-        body: { endpoint, p256dh: keys.p256dh, auth: keys.auth },
+        body: {
+          endpoint: jsonSub.endpoint,
+          p256dh: jsonSub.keys.p256dh,
+          auth: jsonSub.keys.auth,
+        },
       });
 
       subscribed.current = true;
