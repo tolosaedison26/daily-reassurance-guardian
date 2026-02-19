@@ -34,10 +34,10 @@ export default function AuthPage() {
       if (error) {
         setError(error.message);
       } else if (data.user) {
-        // If trigger didn't fire yet (e.g. email not confirmed), upsert profile manually
+        // Upsert profile with correct role (trigger may have created it with default 'senior')
         await supabase.from("profiles").upsert(
           { user_id: data.user.id, full_name: fullName, role },
-          { onConflict: "user_id" }
+          { onConflict: "user_id", ignoreDuplicates: false }
         );
         await supabase.from("user_roles").upsert(
           { user_id: data.user.id, role },
