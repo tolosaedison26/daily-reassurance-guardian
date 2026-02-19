@@ -324,17 +324,9 @@ export default function CaregiverDashboard() {
 
       {/* Add loved one — invite code entry */}
       <div className="px-5 pb-10 mt-5">
-        <Button
-          onClick={() => { setShowSearch(!showSearch); setConnectError(""); }}
-          className="w-full h-14 text-base font-black rounded-2xl border-0 shadow-btn"
-          style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add a Loved One
-        </Button>
-
-        {showSearch && (
-          <div className="mt-3 bg-card rounded-2xl p-5 border border-border shadow-card animate-bounce-in">
+        {/* Always-visible code entry card when no seniors, otherwise toggled */}
+        {seniors.length === 0 && !loading ? (
+          <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
             <p className="font-black text-base mb-1">Enter Invite Code</p>
             <p className="text-sm text-muted-foreground mb-4">
               Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.
@@ -359,12 +351,57 @@ export default function CaregiverDashboard() {
             <Button
               onClick={handleConnectWithCode}
               disabled={connecting || inviteCode.trim().length < 4}
-              className="w-full h-13 h-12 font-black rounded-xl border-0 text-base"
+              className="w-full h-12 font-black rounded-xl border-0 text-base"
               style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
             >
               {connecting ? "Connecting…" : "Connect ✓"}
             </Button>
           </div>
+        ) : (
+          <>
+            <Button
+              onClick={() => { setShowSearch(!showSearch); setConnectError(""); }}
+              className="w-full h-14 text-base font-black rounded-2xl border-0 shadow-btn"
+              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add Another Loved One
+            </Button>
+
+            {showSearch && (
+              <div className="mt-3 bg-card rounded-2xl p-5 border border-border shadow-card animate-bounce-in">
+                <p className="font-black text-base mb-1">Enter Invite Code</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.
+                </p>
+                <Input
+                  placeholder="e.g. PARK-7291"
+                  value={inviteCode}
+                  onChange={(e) => {
+                    setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""));
+                    setConnectError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()}
+                  className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3"
+                  maxLength={9}
+                  autoCapitalize="characters"
+                />
+                {connectError && (
+                  <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">
+                    {connectError}
+                  </div>
+                )}
+                <Button
+                  onClick={handleConnectWithCode}
+                  disabled={connecting || inviteCode.trim().length < 4}
+                  className="w-full h-12 font-black rounded-xl border-0 text-base"
+                  style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
+                >
+                  {connecting ? "Connecting…" : "Connect ✓"}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
