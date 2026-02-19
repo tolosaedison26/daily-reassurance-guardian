@@ -19,11 +19,14 @@ export default function InviteCodeCard({ seniorId }: InviteCodeCardProps) {
   }, []);
 
   const loadExistingCode = async () => {
-    const { data } = await (supabase.from as any)("invite_codes")
+    const { data } = await supabase
+      .from("invite_codes")
       .select("code, expires_at")
       .eq("senior_id", seniorId)
       .eq("is_active", true)
       .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (data) {
