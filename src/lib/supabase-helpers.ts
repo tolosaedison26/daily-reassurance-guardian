@@ -71,8 +71,9 @@ export async function upsertReminderSettings(
 export async function getConnectedSeniors(caregiverId: string) {
   const { data, error } = await supabase
     .from("senior_connections")
-    .select("*, profiles!senior_connections_senior_id_fkey(*)")
-    .eq("caregiver_id", caregiverId);
+    .select("*, profiles(id, user_id, full_name, role)")
+    .eq("caregiver_id", caregiverId)
+    .eq("status", "active");
   return { data, error };
 }
 

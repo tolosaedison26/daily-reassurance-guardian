@@ -64,7 +64,8 @@ export default function CaregiverDashboard() {
     const seniorStatuses: SeniorStatus[] = await Promise.all(
       connections.map(async (conn: any) => {
         const checkIn = await getSeniorCheckInStatus(conn.senior_id);
-        const p = conn.profiles;
+        // profiles can be returned as object or array depending on join type
+        const p = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
         return {
           connection_id: conn.id,
           senior_id: conn.senior_id,
