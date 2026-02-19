@@ -225,6 +225,13 @@ export type Database = {
         Returns: Json
       }
       generate_invite_code: { Args: { p_senior_id: string }; Returns: string }
+      get_missed_checkin_seniors: {
+        Args: never
+        Returns: {
+          full_name: string
+          senior_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

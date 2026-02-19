@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus } from "lucide-react";
+import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface SeniorStatus {
   connection_id: string;
@@ -25,10 +26,24 @@ export default function CaregiverDashboard() {
   const [showSearch, setShowSearch] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
+  const { subscribe } = usePushNotifications();
 
   useEffect(() => {
     if (!user) return;
     loadSeniors();
+
+    // Check notification permission state
+    if ("Notification" in window) {
+      setNotifPermission(Notification.permission);
+    } else {
+      setNotifPermission("unsupported");
+    }
+
+    // Auto-subscribe if already granted
+    if ("Notification" in window && Notification.permission === "granted") {
+      subscribe();
+    }
 
     const channel = supabase
       .channel("caregiver-checkins")
@@ -137,6 +152,39 @@ export default function CaregiverDashboard() {
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
+
+      {/* Push notification prompt */}
+      {notifPermission === "default" && (
+        <div className="mx-5 mb-4 bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "hsl(var(--primary) / 0.12)" }}
+          >
+            <BellRing className="w-5 h-5" style={{ color: "hsl(var(--primary))" }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-sm">Enable alerts</p>
+            <p className="text-xs text-muted-foreground">Get notified if a loved one misses their check-in.</p>
+          </div>
+          <Button
+            onClick={async () => {
+              await subscribe();
+              if ("Notification" in window) setNotifPermission(Notification.permission);
+            }}
+            className="shrink-0 h-9 px-4 rounded-xl font-black border-0 text-sm"
+            style={{ background: "hsl(var(--primary))", color: "#fff" }}
+          >
+            Enable
+          </Button>
+        </div>
+      )}
+
+      {notifPermission === "granted" && seniors.length > 0 && (
+        <div className="mx-5 mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <BellRing className="w-3.5 h-3.5" style={{ color: "hsl(var(--status-checked))" }} />
+          <span style={{ color: "hsl(var(--status-checked))" }}>Alerts enabled — you'll be notified of missed check-ins</span>
+        </div>
+      )}
 
       {/* Connection success toast */}
       {connectSuccess && (
