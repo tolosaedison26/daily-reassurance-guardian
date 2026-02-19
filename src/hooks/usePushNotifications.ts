@@ -12,8 +12,10 @@ export function usePushNotifications() {
   const subscribed = useRef(false);
 
   const subscribe = async () => {
-    if (subscribed.current) return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.warn("Push notifications not supported in this browser/environment");
+      return;
+    }
 
     try {
       const permission = await Notification.requestPermission();
