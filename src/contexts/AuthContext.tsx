@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // INITIAL load: resolve loading immediately, fetch profile in background
+    // INITIAL load: await profile so role is known before rendering
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -61,8 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Don't await — let profile load in background so UI shows instantly
-          fetchProfile(session.user.id);
+          // Await profile so the role is available before showing any page
+          await fetchProfile(session.user.id);
         }
       } finally {
         if (isMounted) setLoading(false);
