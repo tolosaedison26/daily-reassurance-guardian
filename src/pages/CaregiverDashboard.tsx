@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
+import CheckInHistoryPanel from "@/components/CheckInHistoryPanel";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface SeniorStatus {
@@ -28,6 +29,7 @@ export default function CaregiverDashboard() {
   const [connecting, setConnecting] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{ seniorId: string; name: string } | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
   const { subscribe } = usePushNotifications();
 
@@ -276,7 +278,8 @@ export default function CaregiverDashboard() {
             {seniors.map((senior) => (
               <div
                 key={senior.connection_id}
-                className="bg-card rounded-2xl p-5 border shadow-card"
+                className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-transform"
+                onClick={() => setHistoryTarget({ seniorId: senior.senior_id, name: senior.full_name })}
                 style={{
                   borderColor:
                     senior.status === "checked"
@@ -434,6 +437,14 @@ export default function CaregiverDashboard() {
           caregiverId={user.id}
           seniors={seniors.map((s) => ({ senior_id: s.senior_id, full_name: s.full_name }))}
           onClose={() => setShowActivity(false)}
+        />
+      )}
+
+      {historyTarget && (
+        <CheckInHistoryPanel
+          seniorId={historyTarget.seniorId}
+          seniorName={historyTarget.name}
+          onClose={() => setHistoryTarget(null)}
         />
       )}
     </div>
