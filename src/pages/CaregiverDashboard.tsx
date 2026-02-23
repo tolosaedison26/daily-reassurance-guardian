@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
+import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface SeniorStatus {
@@ -26,6 +27,7 @@ export default function CaregiverDashboard() {
   const [showSearch, setShowSearch] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
   const { subscribe } = usePushNotifications();
 
@@ -106,6 +108,16 @@ export default function CaregiverDashboard() {
     }
 
     setConnecting(false);
+  };
+
+  const handleDisconnect = async (connectionId: string) => {
+    setDisconnecting(connectionId);
+    await supabase
+      .from("senior_connections")
+      .update({ status: "inactive" })
+      .eq("id", connectionId);
+    await loadSeniors();
+    setDisconnecting(null);
   };
 
   const checkedCount = seniors.filter((s) => s.status === "checked").length;
@@ -305,20 +317,27 @@ export default function CaregiverDashboard() {
                     )}
                   </div>
 
-                  <div
-                    className="shrink-0 px-3 py-1.5 rounded-full text-xs font-black"
-                    style={{
-                      background:
-                        senior.status === "checked"
-                          ? "hsl(var(--status-checked) / 0.12)"
-                          : "hsl(var(--status-pending) / 0.12)",
-                      color:
-                        senior.status === "checked"
-                          ? "hsl(var(--status-checked))"
-                          : "hsl(var(--status-pending))",
-                    }}
-                  >
-                    {senior.status === "checked" ? "✓ Safe" : "⏳ Pending"}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div
+                      className="px-3 py-1.5 rounded-full text-xs font-black"
+                      style={{
+                        background:
+                          senior.status === "checked"
+                            ? "hsl(var(--status-checked) / 0.12)"
+                            : "hsl(var(--status-pending) / 0.12)",
+                        color:
+                          senior.status === "checked"
+                            ? "hsl(var(--status-checked))"
+                            : "hsl(var(--status-pending))",
+                      }}
+                    >
+                      {senior.status === "checked" ? "✓ Safe" : "⏳ Pending"}
+                    </div>
+                    <DisconnectSeniorDialog
+                      seniorName={senior.full_name}
+                      onConfirm={() => handleDisconnect(senior.connection_id)}
+                      disconnecting={disconnecting === senior.connection_id}
+                    />
                   </div>
                 </div>
               </div>
