@@ -69,12 +69,30 @@ export async function upsertReminderSettings(
 }
 
 export async function getConnectedSeniors(caregiverId: string) {
-  const { data, error } = await supabase
+  const { data: connections, error } = await supabase
     .from("senior_connections")
-    .select("*, profiles(id, user_id, full_name, role)")
+    .select("*")
     .eq("caregiver_id", caregiverId)
     .eq("status", "active");
-  return { data, error };
+
+  if (error || !connections || connections.length === 0) {
+    return { data: connections, error };
+  }
+
+  // Fetch profiles separately since there's no FK relationship
+  const seniorIds = connections.map((c) => c.senior_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("user_id, full_name, role")
+    .in("user_id", seniorIds);
+
+  // Merge profiles into connections
+  const merged = connections.map((conn) => ({
+    ...conn,
+    profiles: profiles?.find((p) => p.user_id === conn.senior_id) || null,
+  }));
+
+  return { data: merged, error: null };
 }
 
 export async function addSeniorConnection(caregiverId: string, seniorEmail: string) {
