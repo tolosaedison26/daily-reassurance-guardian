@@ -207,6 +207,28 @@ export default function SeniorHome() {
         {/* Invite code */}
         {user && <InviteCodeCard seniorId={user.id} />}
 
+        {/* Emergency 911 */}
+        <a
+          href="tel:911"
+          className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card"
+          style={{
+            background: "hsl(0 70% 50% / 0.06)",
+            borderColor: "hsl(0 70% 50% / 0.25)",
+          }}
+        >
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "hsl(0 70% 50%)" }}
+          >
+            <Phone className="w-6 h-6 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-base" style={{ color: "hsl(0 70% 50%)" }}>Emergency 911</p>
+            <p className="text-muted-foreground text-sm">Tap to call for immediate help</p>
+          </div>
+          <span className="ml-auto text-muted-foreground text-lg">›</span>
+        </a>
+
         {/* Calm Sounds */}
         <button
           onClick={() => setShowSound(true)}
