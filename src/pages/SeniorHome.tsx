@@ -31,6 +31,8 @@ export default function SeniorHome() {
   const [loading, setLoading] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const emergencyLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (user) {
