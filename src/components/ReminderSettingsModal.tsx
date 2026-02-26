@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { getReminderSettings, upsertReminderSettings } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { X, Bell, User } from "lucide-react";
+import { X, Bell, User, Moon } from "lucide-react";
 
 interface Props {
   seniorId: string;
@@ -13,6 +15,7 @@ interface Props {
 
 export default function ReminderSettingsModal({ seniorId, onClose }: Props) {
   const { profile, refreshProfile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [nameSaving, setNameSaving] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
@@ -81,6 +84,17 @@ export default function ReminderSettingsModal({ seniorId, onClose }: Props) {
                 {nameSaved ? "✓" : nameSaving ? "…" : "Save"}
               </Button>
             </div>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* Dark Mode */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Moon className="w-4 h-4 text-primary" />
+              <span className="text-base font-semibold">Dark Mode</span>
+            </div>
+            <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
           </div>
 
           <hr className="border-border" />
