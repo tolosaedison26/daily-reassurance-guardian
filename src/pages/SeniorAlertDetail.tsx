@@ -121,7 +121,7 @@ export default function SeniorAlertDetail() {
           </div>
 
           {/* Escalation Ladder */}
-          <EscalationLadder steps={d.steps} />
+          <EscalationLadder steps={resolved ? d.steps.map(s => ({ ...s, status: s.status === "active" ? "stopped" as const : "stopped" as const })) : d.steps} />
         </div>
 
         {/* Action Buttons or Resolved State */}

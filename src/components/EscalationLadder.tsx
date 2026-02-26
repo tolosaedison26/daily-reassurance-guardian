@@ -5,7 +5,7 @@ interface EscalationStep {
   contactName: string;
   relationship: string;
   channels: ("sms" | "email")[];
-  status: "active" | "pending" | "completed";
+  status: "active" | "pending" | "completed" | "stopped";
   timeSent?: string;
   scheduledTime?: string;
   countdownText?: string;
@@ -31,6 +31,7 @@ export default function EscalationLadder({ steps }: EscalationLadderProps) {
           const isActive = step.status === "active";
           const isCompleted = step.status === "completed";
           const isPending = step.status === "pending";
+          const isStopped = step.status === "stopped";
           const isLast = i === steps.length - 1;
 
           return (
@@ -56,9 +57,12 @@ export default function EscalationLadder({ steps }: EscalationLadderProps) {
                       ? "hsl(var(--status-alert))"
                       : isCompleted
                       ? "hsl(var(--status-checked))"
+                      : isStopped
+                      ? "hsl(var(--muted))"
                       : "hsl(var(--muted))",
                     color: isActive || isCompleted ? "#fff" : "hsl(var(--muted-foreground))",
                     animation: isActive ? "pulse-alert 2s ease-in-out infinite" : undefined,
+                    opacity: isStopped ? 0.6 : 1,
                   }}
                 >
                   {step.level}
@@ -113,6 +117,17 @@ export default function EscalationLadder({ steps }: EscalationLadderProps) {
                       Will be alerted if previous contact doesn't respond
                       {step.scheduledTime && ` · Scheduled ${step.scheduledTime}`}
                     </p>
+                  )}
+                  {isStopped && (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black"
+                      style={{
+                        background: "hsl(var(--muted))",
+                        color: "hsl(var(--muted-foreground))",
+                      }}
+                    >
+                      ✕ Cancelled
+                    </span>
                   )}
                   {isCompleted && (
                     <span
