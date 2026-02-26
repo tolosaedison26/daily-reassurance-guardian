@@ -220,8 +220,9 @@ export default function SeniorHome() {
         {user && <InviteCodeCard seniorId={user.id} />}
 
         {/* Emergency 911 */}
-        <a
-          href="tel:911"
+        <a ref={emergencyLinkRef} href="tel:911" className="hidden" aria-hidden="true" />
+        <button
+          onClick={() => setShowEmergencyDialog(true)}
           className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card"
           style={{
             background: "hsl(0 70% 50% / 0.06)",
@@ -239,7 +240,7 @@ export default function SeniorHome() {
             <p className="text-muted-foreground text-sm">Tap to call for immediate help</p>
           </div>
           <span className="ml-auto text-muted-foreground text-lg">›</span>
-        </a>
+        </button>
 
         {/* Calm Sounds */}
         <button
