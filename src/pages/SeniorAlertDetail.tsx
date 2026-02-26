@@ -71,15 +71,21 @@ export default function SeniorAlertDetail() {
           <span
             className="px-3 py-1 rounded-full text-xs font-black"
             style={{
-              background: "hsl(var(--status-alert) / 0.12)",
-              color: "hsl(var(--status-alert))",
+              background: resolved
+                ? "hsl(var(--status-checked) / 0.12)"
+                : "hsl(var(--status-alert) / 0.12)",
+              color: resolved
+                ? "hsl(var(--status-checked))"
+                : "hsl(var(--status-alert))",
             }}
           >
-            MISSED CHECK-IN
+            {resolved ? (resolved === "safe" ? "MARKED SAFE" : "HANDLING") : "MISSED CHECK-IN"}
           </span>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
-          {today} · Due {d.dueTime} · Now {d.overdueText} overdue
+          {resolved
+            ? `${today} · Resolved at ${resolvedTime}`
+            : `${today} · Due ${d.dueTime} · Now ${d.overdueText} overdue`}
         </p>
       </div>
 
@@ -92,8 +98,12 @@ export default function SeniorAlertDetail() {
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shrink-0"
                 style={{
-                  background: "hsl(var(--status-alert) / 0.12)",
-                  color: "hsl(var(--status-alert))",
+                  background: resolved
+                    ? "hsl(var(--status-checked) / 0.12)"
+                    : "hsl(var(--status-alert) / 0.12)",
+                  color: resolved
+                    ? "hsl(var(--status-checked))"
+                    : "hsl(var(--status-alert))",
                 }}
               >
                 {d.initials}
@@ -109,12 +119,15 @@ export default function SeniorAlertDetail() {
                 <span className="font-bold">{d.lastCheckIn}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Streak</span>
+                <span className="text-muted-foreground">Status</span>
                 <span
                   className="px-2.5 py-0.5 rounded-full text-xs font-black"
-                  style={{ background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}
+                  style={resolved
+                    ? { background: "hsl(var(--status-checked) / 0.12)", color: "hsl(var(--status-checked))" }
+                    : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }
+                  }
                 >
-                  Broken
+                  {resolved ? "Safe" : "Broken"}
                 </span>
               </div>
             </div>
@@ -196,13 +209,19 @@ export default function SeniorAlertDetail() {
         <div className="bg-card rounded-2xl border border-border shadow-card p-5">
           <p className="font-black text-base mb-4">Incident Timeline</p>
           <div className="space-y-0">
-            {d.timeline.map((event, i) => (
+            {(resolved
+              ? [
+                  ...d.timeline.map(e => ({ ...e, past: true, resolved: false })),
+                  { time: resolvedTime, label: resolved === "safe" ? "Marked as Safe — alerts stopped" : "Caregiver handling — alerts stopped", past: true, resolved: true },
+                ]
+              : d.timeline.map(e => ({ ...e, resolved: false }))
+            ).map((event, i, arr) => (
               <div key={i} className="flex gap-3 relative">
-                {i < d.timeline.length - 1 && (
+                {i < arr.length - 1 && (
                   <div
                     className="absolute left-[5px] top-[14px] w-0.5 h-full"
                     style={{
-                      background: event.past ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))",
+                      background: event.past ? (event.resolved ? "hsl(var(--status-checked) / 0.3)" : "hsl(var(--status-alert) / 0.3)") : "hsl(var(--border))",
                     }}
                   />
                 )}
@@ -210,7 +229,9 @@ export default function SeniorAlertDetail() {
                   <div
                     className="w-3 h-3 rounded-full"
                     style={{
-                      background: event.past ? "hsl(var(--status-alert))" : "hsl(var(--muted))",
+                      background: event.resolved
+                        ? "hsl(var(--status-checked))"
+                        : event.past ? "hsl(var(--status-alert))" : "hsl(var(--muted))",
                     }}
                   />
                 </div>
@@ -218,7 +239,9 @@ export default function SeniorAlertDetail() {
                   <p className={`text-sm font-bold ${event.past ? "" : "text-muted-foreground"}`}>
                     {event.time}
                   </p>
-                  <p className={`text-sm ${event.past ? "" : "text-muted-foreground italic"}`}>
+                  <p className={`text-sm ${event.resolved ? "font-black" : event.past ? "" : "text-muted-foreground italic"}`}
+                    style={event.resolved ? { color: "hsl(var(--status-checked))" } : undefined}
+                  >
                     {event.label}
                   </p>
                 </div>
