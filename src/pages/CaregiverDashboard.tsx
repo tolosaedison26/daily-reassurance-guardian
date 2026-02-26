@@ -131,7 +131,22 @@ export default function CaregiverDashboard() {
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
   // Demo alert data — shows alert state by default for demo purposes
-  const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(new Set());
+  const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(() => {
+    const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+    return new Set(stored as string[]);
+  });
+
+  // Sync from sessionStorage when window regains focus (e.g. returning from alert detail page)
+  useEffect(() => {
+    const syncResolved = () => {
+      const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+      setResolvedAlerts(new Set(stored as string[]));
+    };
+    window.addEventListener("focus", syncResolved);
+    // Also sync on route changes by checking on mount
+    syncResolved();
+    return () => window.removeEventListener("focus", syncResolved);
+  }, []);
   const allDemoAlerts = [
     {
       seniorId: "demo-alert-1",
@@ -235,7 +250,15 @@ export default function CaregiverDashboard() {
             overdueText={demoAlerts[0].overdueText}
             contactNotified={demoAlerts[0].contactNotified}
             onViewSenior={() => navigate("/seniors/demo-alert-1/alert")}
-            onHandleThis={() => setResolvedAlerts(prev => new Set(prev).add(demoAlerts[0].seniorId))}
+            onHandleThis={() => {
+              const id = demoAlerts[0].seniorId;
+              setResolvedAlerts(prev => new Set(prev).add(id));
+              const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+              if (!existing.includes(id)) {
+                existing.push(id);
+                sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
+              }
+            }}
           />
         </div>
       )}
