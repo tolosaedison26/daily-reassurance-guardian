@@ -274,6 +274,31 @@ export default function SeniorHome() {
           onClose={() => setShowActivity(false)}
         />
       )}
+
+      <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl">
+              🚨 Call 911?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
+              This will dial emergency services. Only use this for real emergencies.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={() => emergencyLinkRef.current?.click()}
+              className="w-full h-14 text-lg font-black rounded-xl border-0"
+              style={{ background: "hsl(0 70% 50%)", color: "#fff" }}
+            >
+              Yes, Call 911
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full h-12 rounded-xl mt-0">
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
