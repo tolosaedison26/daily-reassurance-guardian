@@ -87,6 +87,17 @@ export default function ReminderSettingsModal({ seniorId, onClose }: Props) {
           </div>
 
           <hr className="border-border" />
+
+          {/* Dark Mode */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Moon className="w-4 h-4 text-primary" />
+              <span className="text-base font-semibold">Dark Mode</span>
+            </div>
+            <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
+          </div>
+
+          <hr className="border-border" />
           <div>
             <label className="block text-base font-semibold mb-2">Daily reminder time</label>
             <p className="text-sm text-muted-foreground mb-3">When should we remind you to check in?</p>
