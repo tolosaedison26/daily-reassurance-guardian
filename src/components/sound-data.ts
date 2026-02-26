@@ -10,7 +10,7 @@ import soundWind from "@/assets/sound-wind.jpg";
 import soundBowl from "@/assets/sound-bowl.jpg";
 import soundWhiteNoise from "@/assets/sound-whitenoise.jpg";
 
-export type Category = "nature" | "sleep" | "relax" | "weather";
+export type Category = "favorites" | "nature" | "sleep" | "relax" | "weather";
 
 export interface Sound {
   id: string;
