@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { getReminderSettings, upsertReminderSettings } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { X, Bell, User } from "lucide-react";
+import { X, Bell, User, Moon } from "lucide-react";
 
 interface Props {
   seniorId: string;
