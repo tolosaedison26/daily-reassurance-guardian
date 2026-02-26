@@ -9,12 +9,15 @@ import MoodTrendsCard from "@/components/MoodTrendsCard";
 import SeniorSummaryCard from "@/components/SeniorSummaryCard";
 
 // --- Mock data ---
-const seniorRates = [
-  { name: "Margaret Ross", rate: 95, mood: "😊" },
-  { name: "Frank Johnson", rate: 86, mood: "😐" },
-  { name: "Harold Chen", rate: 71, mood: "😐" },
-  { name: "Dorothy Wilson", rate: 43, mood: "😔" },
-];
+function getSeniorRates(offset: number) {
+  const jitter = Math.abs(offset) % 5;
+  return [
+    { name: "Margaret Ross", rate: Math.min(100, 95 - jitter * 3), mood: jitter > 2 ? "😐" : "😊" },
+    { name: "Frank Johnson", rate: Math.min(100, 86 + jitter * 2), mood: "😐" },
+    { name: "Harold Chen", rate: Math.min(100, 71 - jitter * 5), mood: jitter > 1 ? "😔" : "😐" },
+    { name: "Dorothy Wilson", rate: Math.min(100, 43 + jitter * 8), mood: jitter > 3 ? "😐" : "😔" },
+  ];
+}
 
 type MoodValue = "great" | "okay" | "bad" | null;
 
@@ -51,6 +54,12 @@ export default function ReportsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
+  const seniorRates = getSeniorRates(weekOffset);
+  const overallRate = Math.round(seniorRates.reduce((s, r) => s + r.rate, 0) / seniorRates.length);
+  const jitter = Math.abs(weekOffset) % 5;
+  const totalCheckIns = Math.max(10, 26 - jitter * 3);
+  const checkInRate = overallRate;
+  const missedCheckIns = Math.max(0, 6 + jitter * 2);
 
   return (
     <div className="min-h-screen bg-background pb-10">
@@ -80,11 +89,11 @@ export default function ReportsPage() {
 
       <div className="px-5 space-y-5">
         {/* Section 1: Stats */}
-        <WeeklyStatsRow totalCheckIns={26} checkInRate={82} rateDelta={4} missedCheckIns={6} activeAlerts={1} />
+        <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 ? 1 : 0} />
 
         {/* Section 2 & 4: Check-in Rates + Mood Trends side by side on desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <CheckinRatesCard seniors={seniorRates} overallRate={74} lastWeekRate={71} seniorCount={4} />
+          <CheckinRatesCard seniors={seniorRates} overallRate={overallRate} lastWeekRate={overallRate - 3} seniorCount={4} />
           <MoodTrendsCard seniors={moodData} />
         </div>
 
