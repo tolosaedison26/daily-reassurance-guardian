@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing } from "lucide-react";
+import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
 import CheckInHistoryPanel from "@/components/CheckInHistoryPanel";
+import AlertBanner from "@/components/AlertBanner";
+import AlertSeniorRow from "@/components/AlertSeniorRow";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface SeniorStatus {
@@ -19,6 +22,7 @@ interface SeniorStatus {
 }
 
 export default function CaregiverDashboard() {
+  const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const [seniors, setSeniors] = useState<SeniorStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +130,19 @@ export default function CaregiverDashboard() {
   const notCheckedCount = seniors.filter((s) => s.status === "not-checked").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
+  // Demo alert data — shows alert state by default for demo purposes
+  const demoAlerts = [
+    {
+      seniorId: "demo-alert-1",
+      name: "Dorothy Wilson",
+      dueTime: "9:00 AM",
+      overdueText: "1h 45min",
+      alertTime: "9:45 AM",
+      contactNotified: "Contact #1 has been notified",
+    },
+  ];
+  const alertCount = demoAlerts.length;
+
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
       {/* Top bar */}
@@ -205,6 +222,21 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
+      {/* Alert Banner — demo */}
+      {alertCount > 0 && (
+        <div className="px-5 mb-4">
+          <AlertBanner
+            alertCount={alertCount}
+            seniorName={demoAlerts[0].name}
+            dueTime={demoAlerts[0].dueTime}
+            overdueText={demoAlerts[0].overdueText}
+            contactNotified={demoAlerts[0].contactNotified}
+            onViewSenior={() => navigate("/seniors/demo-alert-1/alert")}
+            onHandleThis={() => {}}
+          />
+        </div>
+      )}
+
       {/* Connection success toast */}
       {connectSuccess && (
         <div className="mx-5 mb-4 bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3 animate-bounce-in">
@@ -217,9 +249,23 @@ export default function CaregiverDashboard() {
       )}
 
       {/* Summary row */}
-      {seniors.length > 0 && (
+      {(seniors.length > 0 || alertCount > 0) && (
         <div className="px-5 mb-5">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Total */}
+            <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "hsl(var(--muted))" }}
+              >
+                <Users className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-3xl font-black leading-none">{seniors.length + alertCount}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Total</p>
+              </div>
+            </div>
+            {/* Safe */}
             <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
@@ -231,9 +277,10 @@ export default function CaregiverDashboard() {
                 <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-checked))" }}>
                   {checkedCount}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">Safe &amp; checked in</p>
+                <p className="text-xs text-muted-foreground mt-0.5">✓ Safe</p>
               </div>
             </div>
+            {/* Pending */}
             <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
@@ -245,9 +292,47 @@ export default function CaregiverDashboard() {
                 <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-pending))" }}>
                   {notCheckedCount}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">Not yet today</p>
+                <p className="text-xs text-muted-foreground mt-0.5">⏳ Pending</p>
               </div>
             </div>
+            {/* Alert */}
+            <div
+              className="rounded-2xl p-4 border shadow-card flex items-center gap-3"
+              style={{
+                background: alertCount > 0 ? "hsl(var(--status-alert) / 0.06)" : "hsl(var(--card))",
+                borderColor: alertCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))",
+              }}
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "hsl(var(--status-alert) / 0.12)" }}
+              >
+                <AlertTriangle className="w-6 h-6" style={{ color: "hsl(var(--status-alert))" }} />
+              </div>
+              <div>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-alert))" }}>
+                  {alertCount}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">🚨 Alert</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert senior rows */}
+      {alertCount > 0 && (
+        <div className="px-5 mb-3">
+          <div className="space-y-3">
+            {demoAlerts.map((alert) => (
+              <AlertSeniorRow
+                key={alert.seniorId}
+                name={alert.name}
+                alertTime={alert.alertTime}
+                contactNotified={alert.contactNotified}
+                onClick={() => navigate(`/seniors/${alert.seniorId}/alert`)}
+              />
+            ))}
           </div>
         </div>
       )}
