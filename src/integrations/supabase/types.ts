@@ -35,6 +35,27 @@ export type Database = {
         }
         Relationships: []
       }
+      favorite_sounds: {
+        Row: {
+          created_at: string
+          id: string
+          sound_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sound_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sound_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invite_codes: {
         Row: {
           code: string

@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Heart } from "lucide-react";
 import { SOUNDS, CATEGORIES, type Sound, type Category } from "./sound-data";
 import { BUILDERS } from "./sound-builders";
+import { useFavoriteSounds } from "@/hooks/useFavoriteSounds";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SoundPlayer({ onBack }: { onBack: () => void }) {
+  const { user } = useAuth();
+  const { favoriteIds, toggleFavorite } = useFavoriteSounds(user?.id);
   const [activeCategory, setActiveCategory] = useState<Category>("nature");
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [volume, setVolume] = useState(0.8);
@@ -59,7 +63,9 @@ export default function SoundPlayer({ onBack }: { onBack: () => void }) {
   }, []);
 
   const playingSound = SOUNDS.find((s) => s.id === playingId);
-  const filteredSounds = SOUNDS.filter((s) => s.category === activeCategory);
+  const filteredSounds = activeCategory === "favorites"
+    ? SOUNDS.filter((s) => favoriteIds.has(s.id))
+    : SOUNDS.filter((s) => s.category === activeCategory);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -108,6 +114,9 @@ export default function SoundPlayer({ onBack }: { onBack: () => void }) {
             >
               <span>{cat.emoji}</span>
               {cat.label}
+              {cat.id === "favorites" && favoriteIds.size > 0 && (
+                <span className="ml-0.5 text-xs opacity-75">{favoriteIds.size}</span>
+              )}
             </button>
           ))}
         </div>
@@ -152,63 +161,89 @@ export default function SoundPlayer({ onBack }: { onBack: () => void }) {
 
       {/* Sound Grid */}
       <div className="flex-1 px-5 pb-8">
-        <div className="grid grid-cols-2 gap-3">
-          {filteredSounds.map((sound) => {
-            const isPlaying = playingId === sound.id;
-            return (
-              <button
-                key={sound.id}
-                onClick={() => handlePlay(sound)}
-                className="relative overflow-hidden rounded-lg aspect-square text-left transition-transform active:scale-95 w-full max-w-[180px] mx-auto"
-                style={{
-                  outline: isPlaying ? `2.5px solid ${sound.color}` : undefined,
-                  outlineOffset: "2px",
-                }}
-              >
-                <img src={sound.image} alt={sound.title} className="absolute inset-0 w-full h-full object-cover" />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: isPlaying
-                      ? `linear-gradient(to top, ${sound.color}ee 0%, ${sound.color}55 50%, transparent 100%)`
-                      : "linear-gradient(to top, hsl(0 0% 0% / 0.7) 0%, hsl(0 0% 0% / 0.15) 60%, transparent 100%)",
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm transition-all"
+        {activeCategory === "favorites" && filteredSounds.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Heart className="w-12 h-12 text-muted-foreground/30 mb-3" />
+            <p className="font-bold text-muted-foreground">No favorites yet</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">
+              Tap the heart on any sound to add it here
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filteredSounds.map((sound) => {
+              const isPlaying = playingId === sound.id;
+              const isFav = favoriteIds.has(sound.id);
+              return (
+                <div key={sound.id} className="relative max-w-[180px] mx-auto w-full">
+                  <button
+                    onClick={() => handlePlay(sound)}
+                    className="relative overflow-hidden rounded-lg aspect-square text-left transition-transform active:scale-95 w-full"
                     style={{
-                      backgroundColor: isPlaying ? sound.color : "hsl(0 0% 100% / 0.2)",
-                      border: "2px solid",
-                      borderColor: isPlaying ? sound.color : "rgba(255,255,255,0.4)",
+                      outline: isPlaying ? `2.5px solid ${sound.color}` : undefined,
+                      outlineOffset: "2px",
                     }}
                   >
-                    {isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white ml-0.5" />}
-                  </div>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <p className="text-white font-black text-base leading-tight drop-shadow">{sound.emoji} {sound.title}</p>
-                  <p className="text-white/75 text-xs">{sound.subtitle}</p>
-                </div>
-                {isPlaying && (
-                  <div className="absolute top-3 right-3 flex gap-0.5 items-end h-5">
-                    {[1, 2, 3, 4].map((i) => (
+                    <img src={sound.image} alt={sound.title} className="absolute inset-0 w-full h-full object-cover" />
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: isPlaying
+                          ? `linear-gradient(to top, ${sound.color}ee 0%, ${sound.color}55 50%, transparent 100%)`
+                          : "linear-gradient(to top, hsl(0 0% 0% / 0.7) 0%, hsl(0 0% 0% / 0.15) 60%, transparent 100%)",
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
                       <div
-                        key={i}
-                        className="w-1 rounded-full bg-white"
+                        className="w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm transition-all"
                         style={{
-                          height: `${8 + (i % 3) * 4}px`,
-                          animation: `sound-bar${i} 0.8s ease-in-out infinite alternate`,
-                          animationDelay: `${i * 0.1}s`,
+                          backgroundColor: isPlaying ? sound.color : "hsl(0 0% 100% / 0.2)",
+                          border: "2px solid",
+                          borderColor: isPlaying ? sound.color : "rgba(255,255,255,0.4)",
                         }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                      >
+                        {isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white ml-0.5" />}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <p className="text-white font-black text-base leading-tight drop-shadow">{sound.emoji} {sound.title}</p>
+                      <p className="text-white/75 text-xs">{sound.subtitle}</p>
+                    </div>
+                    {isPlaying && (
+                      <div className="absolute top-3 right-3 flex gap-0.5 items-end h-5">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div
+                            key={i}
+                            className="w-1 rounded-full bg-white"
+                            style={{
+                              height: `${8 + (i % 3) * 4}px`,
+                              animation: `sound-bar${i} 0.8s ease-in-out infinite alternate`,
+                              animationDelay: `${i * 0.1}s`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                  {/* Favorite heart button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(sound.id); }}
+                    className="absolute top-2 left-2 z-10 p-1.5 rounded-full backdrop-blur-sm transition-all active:scale-90"
+                    style={{
+                      backgroundColor: isFav ? "hsl(0 80% 55%)" : "hsl(0 0% 0% / 0.3)",
+                    }}
+                  >
+                    <Heart
+                      className="w-4 h-4 text-white transition-transform"
+                      fill={isFav ? "white" : "none"}
+                      style={{ transform: isFav ? "scale(1.1)" : "scale(1)" }}
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="mt-4 p-4 rounded-2xl bg-card border border-border text-center">
           <p className="text-sm text-muted-foreground">
