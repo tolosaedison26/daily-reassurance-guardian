@@ -1,13 +1,6 @@
-// Daily Guardian Service Worker - Push Notifications
+// Daily Guardian - Custom SW logic injected into vite-plugin-pwa service worker
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
-});
-
+// Push notification handler
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
@@ -20,8 +13,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body || 'A loved one needs your attention.',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/pwa-192x192.png',
+    badge: '/pwa-192x192.png',
     tag: data.tag || 'daily-guardian',
     renotify: true,
     requireInteraction: true,
@@ -37,6 +30,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
