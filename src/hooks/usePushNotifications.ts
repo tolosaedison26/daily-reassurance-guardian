@@ -28,8 +28,8 @@ export function usePushNotifications() {
         return;
       }
 
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      // Use the PWA service worker registration (registered by vite-plugin-pwa)
+      const registration = await navigator.serviceWorker.ready;
 
       const pushManager = (registration as any).pushManager;
       const existing = await pushManager.getSubscription();
