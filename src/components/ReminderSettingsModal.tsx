@@ -15,6 +15,7 @@ interface Props {
 
 export default function ReminderSettingsModal({ seniorId, onClose }: Props) {
   const { profile, refreshProfile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [nameSaving, setNameSaving] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
