@@ -44,6 +44,7 @@
     --status-checked: 142 60% 40%;
     --status-pending: 28 95% 54%;
     --status-none: 220 12% 68%;
+    --status-alert: 0 72% 51%;
 
     /* Snug-style gradients — clean, minimal */
     --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%), hsl(30 60% 97%));
@@ -89,6 +90,7 @@
     --status-checked: 142 55% 45%;
     --status-pending: 28 90% 58%;
     --status-none: 220 12% 55%;
+    --status-alert: 0 60% 50%;
 
     --gradient-hero: linear-gradient(180deg, hsl(220 18% 10%), hsl(220 16% 13%));
     --gradient-card: linear-gradient(160deg, hsl(220 16% 14%), hsl(220 14% 16%));
@@ -163,6 +165,12 @@
   .bg-status-none {
     background-color: hsl(var(--status-none));
   }
+  .status-alert {
+    color: hsl(var(--status-alert));
+  }
+  .bg-status-alert {
+    background-color: hsl(var(--status-alert));
+  }
 }
 
 /* Pulse animations */
@@ -180,6 +188,17 @@
   0% { transform: scale(0.88) translateY(12px); opacity: 0; }
   60% { transform: scale(1.03) translateY(-2px); }
   100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes pulse-alert {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(0 72% 51% / 0.4); }
+  50% { box-shadow: 0 0 0 10px hsl(0 72% 51% / 0); }
+}
+
+@keyframes scale-in {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes slide-up {
