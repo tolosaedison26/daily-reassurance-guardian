@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import WeeklyStatsRow from "@/components/WeeklyStatsRow";
 import CheckinRatesCard from "@/components/CheckinRatesCard";
 import MoodTrendsCard from "@/components/MoodTrendsCard";
@@ -48,6 +49,7 @@ function getWeekLabel(offset: number) {
 
 export default function ReportsPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
 
   return (
@@ -69,7 +71,7 @@ export default function ReportsPage() {
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
-            <Button variant="ghost" size="sm" className="gap-1.5">
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => toast({ title: "Export Started", description: `Exporting CSV for ${getWeekLabel(weekOffset)}…` })}>
               <Download className="w-4 h-4" /> Export CSV
             </Button>
           </div>
@@ -103,7 +105,7 @@ export default function ReportsPage() {
           <p className="text-sm text-foreground leading-relaxed">
             Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times. Consider a wellness call.
           </p>
-          <Button variant="outline" size="sm" className="mt-3 text-xs border-destructive/50 text-destructive hover:bg-destructive/10">
+          <Button variant="outline" size="sm" className="mt-3 text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/")}>
             View Dorothy's Profile →
           </Button>
         </div>
@@ -127,7 +129,7 @@ export default function ReportsPage() {
           <p className="text-xs text-muted-foreground mb-3">
             Next digest: Sunday, Mar 1 at 8:00 AM
           </p>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => toast({ title: "Preview Sent", description: "A preview digest email has been sent to your inbox." })}>
             <Mail className="w-4 h-4" /> Send Preview Email
           </Button>
         </div>
