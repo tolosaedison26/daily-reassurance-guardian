@@ -53,7 +53,21 @@ export default function SeniorAlertDetail() {
   const { id } = useParams();
   const d = DEMO;
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-  const [resolved, setResolved] = useState<null | "handling" | "safe">(null);
+  const [resolved, setResolvedLocal] = useState<null | "handling" | "safe">(() => {
+    const stored = sessionStorage.getItem(`alert-resolved-${id}`);
+    return stored as null | "handling" | "safe";
+  });
+
+  const setResolved = (value: "handling" | "safe") => {
+    setResolvedLocal(value);
+    sessionStorage.setItem(`alert-resolved-${id}`, value);
+    // Also mark in the shared resolved alerts set for the dashboard
+    const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+    if (!existing.includes(id)) {
+      existing.push(id);
+      sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
+    }
+  };
   const resolvedTime = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
   return (
