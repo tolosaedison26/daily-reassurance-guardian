@@ -131,7 +131,8 @@ export default function CaregiverDashboard() {
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
   // Demo alert data — shows alert state by default for demo purposes
-  const demoAlerts = [
+  const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(new Set());
+  const allDemoAlerts = [
     {
       seniorId: "demo-alert-1",
       name: "Dorothy Wilson",
@@ -141,10 +142,12 @@ export default function CaregiverDashboard() {
       contactNotified: "Contact #1 has been notified",
     },
   ];
+  const demoAlerts = allDemoAlerts.filter(a => !resolvedAlerts.has(a.seniorId));
   const alertCount = demoAlerts.length;
 
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
+      <div className="w-full max-w-3xl mx-auto">
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4">
         <div className="flex items-center gap-2">
@@ -232,7 +235,7 @@ export default function CaregiverDashboard() {
             overdueText={demoAlerts[0].overdueText}
             contactNotified={demoAlerts[0].contactNotified}
             onViewSenior={() => navigate("/seniors/demo-alert-1/alert")}
-            onHandleThis={() => {}}
+            onHandleThis={() => setResolvedAlerts(prev => new Set(prev).add(demoAlerts[0].seniorId))}
           />
         </div>
       )}
@@ -536,6 +539,8 @@ export default function CaregiverDashboard() {
           </>
         )}
       </div>
+
+      </div>{/* end max-w container */}
 
       {showActivity && user && (
         <ActivityPanel
