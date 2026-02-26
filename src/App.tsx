@@ -8,6 +8,8 @@ import { useTheme } from "@/hooks/useTheme";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import InstallPrompt from "@/components/InstallPrompt";
 import Index from "./pages/Index";
+import SeniorAlertDetail from "./pages/SeniorAlertDetail";
+import AcknowledgmentPage from "./pages/AcknowledgmentPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/seniors/:id/alert" element={<SeniorAlertDetail />} />
+            <Route path="/ack/:token" element={<AcknowledgmentPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
