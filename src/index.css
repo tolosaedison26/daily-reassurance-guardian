@@ -85,6 +85,19 @@
     --border: 220 14% 22%;
     --input: 220 14% 22%;
     --ring: 28 95% 58%;
+
+    --status-checked: 142 55% 45%;
+    --status-pending: 28 90% 58%;
+    --status-none: 220 12% 55%;
+
+    --gradient-hero: linear-gradient(180deg, hsl(220 18% 10%), hsl(220 16% 13%));
+    --gradient-card: linear-gradient(160deg, hsl(220 16% 14%), hsl(220 14% 16%));
+    --gradient-btn: linear-gradient(135deg, hsl(142 55% 40%), hsl(155 50% 34%));
+
+    --shadow-soft: 0 4px 24px -4px hsl(0 0% 0% / 0.30);
+    --shadow-card: 0 2px 14px -2px hsl(0 0% 0% / 0.25);
+    --shadow-btn: 0 8px 24px -6px hsl(142 55% 30% / 0.40);
+
     --sidebar-background: 220 18% 10%;
     --sidebar-foreground: 40 20% 85%;
     --sidebar-primary: 28 95% 58%;
