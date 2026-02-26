@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle } from "lucide-react";
+import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle, BarChart3 } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
 import CheckInHistoryPanel from "@/components/CheckInHistoryPanel";
@@ -432,6 +432,26 @@ export default function CaregiverDashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Reports link */}
+      <div className="px-5 mt-4">
+        <button
+          onClick={() => navigate("/reports")}
+          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card active:scale-[0.98] transition-transform"
+        >
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "hsl(var(--primary) / 0.12)" }}
+          >
+            <BarChart3 className="w-6 h-6" style={{ color: "hsl(var(--primary))" }} />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-base">Weekly Reports</p>
+            <p className="text-muted-foreground text-sm">Analytics &amp; trends</p>
+          </div>
+          <span className="ml-auto text-muted-foreground text-lg">›</span>
+        </button>
       </div>
 
       {/* Add loved one — invite code entry */}
