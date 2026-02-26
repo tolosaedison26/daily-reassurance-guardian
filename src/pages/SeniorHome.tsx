@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
