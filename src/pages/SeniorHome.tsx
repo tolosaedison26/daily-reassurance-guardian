@@ -1,7 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LogOut, Music, Settings, Bell, Phone } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
@@ -21,6 +31,8 @@ export default function SeniorHome() {
   const [loading, setLoading] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const emergencyLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -208,8 +220,9 @@ export default function SeniorHome() {
         {user && <InviteCodeCard seniorId={user.id} />}
 
         {/* Emergency 911 */}
-        <a
-          href="tel:911"
+        <a ref={emergencyLinkRef} href="tel:911" className="hidden" aria-hidden="true" />
+        <button
+          onClick={() => setShowEmergencyDialog(true)}
           className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card"
           style={{
             background: "hsl(0 70% 50% / 0.06)",
@@ -227,7 +240,7 @@ export default function SeniorHome() {
             <p className="text-muted-foreground text-sm">Tap to call for immediate help</p>
           </div>
           <span className="ml-auto text-muted-foreground text-lg">›</span>
-        </a>
+        </button>
 
         {/* Calm Sounds */}
         <button
@@ -261,6 +274,31 @@ export default function SeniorHome() {
           onClose={() => setShowActivity(false)}
         />
       )}
+
+      <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl">
+              🚨 Call 911?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
+              This will dial emergency services. Only use this for real emergencies.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={() => emergencyLinkRef.current?.click()}
+              className="w-full h-14 text-lg font-black rounded-xl border-0"
+              style={{ background: "hsl(0 70% 50%)", color: "#fff" }}
+            >
+              Yes, Call 911
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full h-12 rounded-xl mt-0">
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
