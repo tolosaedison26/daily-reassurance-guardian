@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
-import { LogOut, Music, Settings, Bell } from "lucide-react";
+import { LogOut, Music, Settings, Bell, Phone } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
