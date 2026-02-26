@@ -23,6 +23,7 @@ export interface Sound {
 }
 
 export const CATEGORIES: { id: Category; label: string; emoji: string }[] = [
+  { id: "favorites", label: "Favorites", emoji: "❤️" },
   { id: "nature", label: "Nature", emoji: "🌿" },
   { id: "sleep", label: "Sleep", emoji: "😴" },
   { id: "relax", label: "Relax", emoji: "🧘" },
