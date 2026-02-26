@@ -83,7 +83,7 @@ export default function InstallPrompt() {
         {!isIos && deferredPrompt && (
           <button
             onClick={handleInstall}
-            className="mt-3 w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="mt-3 w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 pulse"
           >
             Install App
           </button>
