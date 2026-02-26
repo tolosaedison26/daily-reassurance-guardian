@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Heart } from "lucide-react";
 import { createUserProfile } from "@/lib/supabase-helpers";
+import LandingPage from "./LandingPage";
 
 type Mode = "login" | "signup";
 type Role = "senior" | "caregiver";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
+  const [showAuth, setShowAuth] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -34,7 +36,6 @@ export default function AuthPage() {
       if (error) {
         setError(error.message);
       } else if (data.user) {
-        // Upsert profile with correct role (trigger may have created it with default 'senior')
         await supabase.from("profiles").upsert(
           { user_id: data.user.id, full_name: fullName, role },
           { onConflict: "user_id", ignoreDuplicates: false }
@@ -53,10 +54,20 @@ export default function AuthPage() {
     setLoading(false);
   };
 
+  if (!showAuth) {
+    return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* Back to landing */}
+      <div className="px-5 pt-6">
+        <button onClick={() => setShowAuth(false)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          ← Back
+        </button>
+      </div>
       {/* Header */}
-      <div className="flex flex-col items-center pt-16 pb-6 px-5">
+      <div className="flex flex-col items-center pt-8 pb-6 px-5">
         <span className="text-5xl mb-3">☀️</span>
         <h1
           className="text-3xl font-black tracking-tight"
