@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Phone, ShieldCheck, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,8 @@ export default function SeniorAlertDetail() {
   const { id } = useParams();
   const d = DEMO;
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const [resolved, setResolved] = useState<null | "handling" | "safe">(null);
+  const resolvedTime = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
   return (
     <div className="min-h-screen bg-background overflow-y-auto pb-10">
@@ -121,26 +124,73 @@ export default function SeniorAlertDetail() {
           <EscalationLadder steps={d.steps} />
         </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <Button
-            className="w-full h-14 font-black rounded-xl border-0 text-base"
-            style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
-          >
-            <ShieldCheck className="w-5 h-5 mr-2" />
-            I'm Handling This — Stop All Alerts
-          </Button>
-          <a href={`tel:${d.phone.replace(/[^+\d]/g, "")}`} className="block">
-            <Button variant="outline" className="w-full h-14 font-black rounded-xl text-base">
-              <Phone className="w-5 h-5 mr-2" />
-              Call {d.name.split(" ")[0]} Now
+        {/* Action Buttons or Resolved State */}
+        {resolved ? (
+          <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center space-y-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+              style={{
+                background: "hsl(var(--status-checked) / 0.12)",
+                animation: "scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+              }}
+            >
+              {resolved === "handling" ? (
+                <ShieldCheck className="w-8 h-8" style={{ color: "hsl(var(--status-checked))" }} />
+              ) : (
+                <CheckCircle className="w-8 h-8" style={{ color: "hsl(var(--status-checked))" }} />
+              )}
+            </div>
+            <h2 className="text-xl font-black">
+              {resolved === "handling" ? "You're Handling This" : "Marked as Safe"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {resolved === "handling"
+                ? `All automated alerts have been stopped. Logged ${resolvedTime}.`
+                : `${d.name} has been marked safe. Alerts stopped. Logged ${resolvedTime}.`}
+            </p>
+            <div
+              className="rounded-xl p-4 text-left text-sm space-y-1"
+              style={{ background: "hsl(var(--status-checked) / 0.06)" }}
+            >
+              <p style={{ color: "hsl(var(--status-checked))" }}>✓ Escalation stopped</p>
+              <p style={{ color: "hsl(var(--status-checked))" }}>✓ Pending contacts will not be alerted</p>
+            </div>
+            <a href={`tel:${d.phone.replace(/[^+\d]/g, "")}`} className="block">
+              <Button variant="outline" className="w-full h-14 font-black rounded-xl text-base">
+                <Phone className="w-5 h-5 mr-2" />
+                Call {d.name.split(" ")[0]} Now
+              </Button>
+            </a>
+            <Button variant="ghost" className="w-full font-black rounded-xl" onClick={() => navigate("/")}>
+              ← Back to Dashboard
             </Button>
-          </a>
-          <Button variant="ghost" className="w-full h-12 font-black rounded-xl text-base">
-            <CheckCircle className="w-5 h-5 mr-2" />
-            Mark as Safe
-          </Button>
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Button
+              className="w-full h-14 font-black rounded-xl border-0 text-base"
+              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
+              onClick={() => setResolved("handling")}
+            >
+              <ShieldCheck className="w-5 h-5 mr-2" />
+              I'm Handling This — Stop All Alerts
+            </Button>
+            <a href={`tel:${d.phone.replace(/[^+\d]/g, "")}`} className="block">
+              <Button variant="outline" className="w-full h-14 font-black rounded-xl text-base">
+                <Phone className="w-5 h-5 mr-2" />
+                Call {d.name.split(" ")[0]} Now
+              </Button>
+            </a>
+            <Button
+              variant="ghost"
+              className="w-full h-12 font-black rounded-xl text-base"
+              onClick={() => setResolved("safe")}
+            >
+              <CheckCircle className="w-5 h-5 mr-2" />
+              Mark as Safe
+            </Button>
+          </div>
+        )}
 
         {/* Incident Timeline */}
         <div className="bg-card rounded-2xl border border-border shadow-card p-5">
