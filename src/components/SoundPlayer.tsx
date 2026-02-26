@@ -389,14 +389,14 @@ export default function SoundPlayer({ onBack }: { onBack: () => void }) {
 
       {/* Sound Grid */}
       <div className="flex-1 px-5 pb-8">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {SOUNDS.map((sound) => {
             const isPlaying = playingId === sound.id;
             return (
               <button
                 key={sound.id}
                 onClick={() => handlePlay(sound)}
-                className="relative overflow-hidden rounded-2xl aspect-square text-left transition-transform active:scale-95"
+                className="relative overflow-hidden rounded-lg aspect-square text-left transition-transform active:scale-95 w-full max-w-[180px] mx-auto"
                 style={{
                   outline: isPlaying ? `2.5px solid ${sound.color}` : undefined,
                   outlineOffset: "2px",
