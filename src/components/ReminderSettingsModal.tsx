@@ -12,6 +12,10 @@ interface Props {
 }
 
 export default function ReminderSettingsModal({ seniorId, onClose }: Props) {
+  const { profile, refreshProfile } = useAuth();
+  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameSaved, setNameSaved] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
   const [gracePeriod, setGracePeriod] = useState(2);
   const [saving, setSaving] = useState(false);
