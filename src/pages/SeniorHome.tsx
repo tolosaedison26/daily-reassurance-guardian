@@ -243,6 +243,9 @@ export default function SeniorHome() {
           <span className="ml-auto text-muted-foreground text-lg">›</span>
         </button>
 
+        {/* Emergency Contacts */}
+        {user && <EmergencyContacts userId={user.id} />}
+
         {/* Calm Sounds */}
         <button
           onClick={() => setShowSound(true)}
