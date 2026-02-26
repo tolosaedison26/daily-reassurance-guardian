@@ -16,6 +16,7 @@ import { LogOut, Music, Settings, Bell, Phone } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
+import EmergencyContacts from "@/components/EmergencyContacts";
 import SeniorActivityPanel from "@/components/SeniorActivityPanel";
 import InviteCodeCard from "@/components/InviteCodeCard";
 
@@ -241,6 +242,9 @@ export default function SeniorHome() {
           </div>
           <span className="ml-auto text-muted-foreground text-lg">›</span>
         </button>
+
+        {/* Emergency Contacts */}
+        {user && <EmergencyContacts userId={user.id} />}
 
         {/* Calm Sounds */}
         <button
