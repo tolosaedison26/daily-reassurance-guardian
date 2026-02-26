@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams, useBlocker } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -39,8 +39,15 @@ export default function AddEditSeniorPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Unsaved changes blocker
-  const blocker = useBlocker(dirty && !saving);
+  // Unsaved changes warning via beforeunload
+  useEffect(() => {
+    if (!dirty || saving) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty, saving]);
 
   const onChange = useCallback((patch: Partial<SeniorFormData>) => {
     setData((prev) => ({ ...prev, ...patch }));
@@ -161,21 +168,6 @@ export default function AddEditSeniorPage() {
         </Card>
       </div>
 
-      {/* Unsaved changes dialog */}
-      <AlertDialog open={blocker.state === "blocked"}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. Are you sure you want to leave?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => blocker.reset?.()}>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => blocker.proceed?.()}>Leave</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
