@@ -55,7 +55,7 @@ export default function AuthPage() {
   };
 
   if (!showAuth) {
-    return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+    return <LandingPage onGetStarted={() => { setMode("signup"); setShowAuth(true); }} onSignIn={() => { setMode("login"); setShowAuth(true); }} />;
   }
 
   return (
