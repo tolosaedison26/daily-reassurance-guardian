@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,10 +6,11 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-export default function AccountSettingsPage({ onBack }: { onBack: () => void }) {
+export default function AccountSettingsPage({ onBack }: { onBack?: () => void } = {}) {
+  const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -36,7 +38,6 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
     setNameSaving(true);
     const { error } = await supabase.from("profiles").update({ full_name: trimmed }).eq("user_id", user.id);
     if (!error) {
-      // Also update auth metadata so it's consistent
       await supabase.auth.updateUser({ data: { full_name: trimmed } });
       await refreshProfile();
       toast({ title: "Name updated", description: "Your display name has been saved." });
@@ -88,154 +89,144 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background max-w-3xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex items-center gap-4 px-5 pt-10 pb-4">
-        <button onClick={onBack} className="p-3 rounded-full bg-muted flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-black">Account Settings</h1>
+    <div className="space-y-5">
+      {/* Display Name */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4 text-primary" />
+          <h2 className="font-bold text-base">Display Name</h2>
+        </div>
+        <Input
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          maxLength={100}
+          className="h-12 rounded-xl text-base"
+          placeholder="Your name"
+        />
+        <Button
+          onClick={handleSaveName}
+          disabled={nameSaving || !fullName.trim() || fullName.trim() === profile?.full_name}
+          className="w-full h-12 rounded-xl font-bold"
+        >
+          {nameSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Name"}
+        </Button>
       </div>
 
-      <div className="flex-1 px-5 pb-10 space-y-5">
-        {/* Display Name */}
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-primary" />
-            <h2 className="font-bold text-base">Display Name</h2>
-          </div>
+      {/* Email */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4 text-primary" />
+          <h2 className="font-bold text-base">Email Address</h2>
+        </div>
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          maxLength={255}
+          className="h-12 rounded-xl text-base"
+          placeholder="your@email.com"
+        />
+        <p className="text-xs text-muted-foreground">
+          Changing email requires confirmation via the new address.
+        </p>
+        <Button
+          onClick={handleSaveEmail}
+          disabled={emailSaving || !email.trim() || email.trim() === user?.email}
+          className="w-full h-12 rounded-xl font-bold"
+        >
+          {emailSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Email"}
+        </Button>
+      </div>
+
+      {/* Password */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
+        <div className="flex items-center gap-2">
+          <Lock className="w-4 h-4 text-primary" />
+          <h2 className="font-bold text-base">Change Password</h2>
+        </div>
+        <div className="relative">
           <Input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            maxLength={100}
-            className="h-12 rounded-xl text-base"
-            placeholder="Your name"
+            type={showNewPassword ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="h-12 rounded-xl text-base pr-12"
+            placeholder="New password (min 6 chars)"
+            maxLength={128}
           />
-          <Button
-            onClick={handleSaveName}
-            disabled={nameSaving || !fullName.trim() || fullName.trim() === profile?.full_name}
-            className="w-full h-12 rounded-xl font-bold"
+          <button
+            type="button"
+            onClick={() => setShowNewPassword(!showNewPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={showNewPassword ? "Hide password" : "Show password"}
           >
-            {nameSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Name"}
-          </Button>
+            {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
         </div>
-
-        {/* Email */}
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
-          <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-primary" />
-            <h2 className="font-bold text-base">Email Address</h2>
-          </div>
+        <div className="relative">
           <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            maxLength={255}
-            className="h-12 rounded-xl text-base"
-            placeholder="your@email.com"
+            type={showConfirmPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="h-12 rounded-xl text-base pr-12"
+            placeholder="Confirm new password"
+            maxLength={128}
           />
-          <p className="text-xs text-muted-foreground">
-            Changing email requires confirmation via the new address.
-          </p>
-          <Button
-            onClick={handleSaveEmail}
-            disabled={emailSaving || !email.trim() || email.trim() === user?.email}
-            className="w-full h-12 rounded-xl font-bold"
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
           >
-            {emailSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Email"}
-          </Button>
+            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
         </div>
+        <Button
+          onClick={handleSavePassword}
+          disabled={passwordSaving || !newPassword || !confirmPassword}
+          className="w-full h-12 rounded-xl font-bold"
+        >
+          {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change Password"}
+        </Button>
+      </div>
 
-        {/* Password */}
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
+      {/* Preferences */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-4">
+        <h2 className="font-bold text-base">Preferences</h2>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-primary" />
-            <h2 className="font-bold text-base">Change Password</h2>
+            <Moon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">Dark Mode</span>
           </div>
-          <div className="relative">
-            <Input
-              type={showNewPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="h-12 rounded-xl text-base pr-12"
-              placeholder="New password (min 6 chars)"
-              maxLength={128}
-            />
-            <button
-              type="button"
-              onClick={() => setShowNewPassword(!showNewPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showNewPassword ? "Hide password" : "Show password"}
-            >
-              {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-          <div className="relative">
-            <Input
-              type={showConfirmPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="h-12 rounded-xl text-base pr-12"
-              placeholder="Confirm new password"
-              maxLength={128}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-            >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-          <Button
-            onClick={handleSavePassword}
-            disabled={passwordSaving || !newPassword || !confirmPassword}
-            className="w-full h-12 rounded-xl font-bold"
-          >
-            {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change Password"}
-          </Button>
+          <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
         </div>
-
-        {/* Preferences */}
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-4">
-          <h2 className="font-bold text-base">Preferences</h2>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Moon className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold">Dark Mode</span>
-            </div>
-            <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">Push Notifications</span>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold">Push Notifications</span>
-            </div>
           <Switch
-              checked={notifEnabled}
-              onCheckedChange={async (v) => {
-                setNotifEnabled(v);
-                if (v && "Notification" in window && Notification.permission === "default") {
-                  const perm = await Notification.requestPermission();
-                  if (perm !== "granted") {
-                    setNotifEnabled(false);
-                    toast({ title: "Notifications blocked", description: "Please enable notifications in your browser settings.", variant: "destructive" });
-                    return;
-                  }
+            checked={notifEnabled}
+            onCheckedChange={async (v) => {
+              setNotifEnabled(v);
+              if (v && "Notification" in window && Notification.permission === "default") {
+                const perm = await Notification.requestPermission();
+                if (perm !== "granted") {
+                  setNotifEnabled(false);
+                  toast({ title: "Notifications blocked", description: "Please enable notifications in your browser settings.", variant: "destructive" });
+                  return;
                 }
-                toast({ title: v ? "Notifications enabled" : "Notifications disabled" });
-              }}
-            />
-          </div>
+              }
+              toast({ title: v ? "Notifications enabled" : "Notifications disabled" });
+            }}
+          />
         </div>
+      </div>
 
-        {/* Role info */}
-        <div className="bg-muted/50 rounded-2xl p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            Signed in as <span className="font-bold capitalize">{profile?.role || "user"}</span> · {user?.email}
-          </p>
-        </div>
+      {/* Role info */}
+      <div className="bg-muted/50 rounded-2xl p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          Signed in as <span className="font-bold capitalize">{profile?.role || "user"}</span> · {user?.email}
+        </p>
       </div>
     </div>
   );

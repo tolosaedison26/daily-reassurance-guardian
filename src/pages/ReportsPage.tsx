@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import WeeklyStatsRow from "@/components/WeeklyStatsRow";
@@ -56,8 +56,6 @@ export default function ReportsPage() {
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
   const [attentionDismissed, setAttentionDismissed] = useState(false);
-
-  // Compose modal state
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeChannel, setComposeChannel] = useState<"email" | "sms">("email");
   const [composeSenior, setComposeSenior] = useState<typeof seniorSummaries[0] & { email?: string } | null>(null);
@@ -68,7 +66,6 @@ export default function ReportsPage() {
   const totalCheckIns = Math.max(10, 26 - jitter * 3);
   const checkInRate = overallRate;
   const missedCheckIns = Math.max(0, 6 + jitter * 2);
-
   const dorothyRate = seniorRates.find(s => s.name === "Dorothy Wilson")?.rate ?? 0;
   const showAttention = weekOffset === 0 && dorothyRate < 50 && !attentionDismissed;
 
@@ -92,126 +89,81 @@ export default function ReportsPage() {
   const weekLabel = getWeekLabel(weekOffset);
 
   return (
-    <div className="min-h-screen bg-background pb-10">
-      {/* Header */}
-      <div className="px-5 pt-10 pb-4">
-        <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-muted-foreground mb-3 hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Dashboard
-        </button>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h1 className="text-2xl md:text-3xl font-black">Weekly Reports</h1>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-card border border-border rounded-xl px-2 py-1 shadow-card">
-              <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
-                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <span className="text-sm font-semibold px-2 whitespace-nowrap">{weekLabel}</span>
-              <button onClick={() => setWeekOffset(weekOffset + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors" disabled={weekOffset >= 0}>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => toast({ title: "Export Started", description: `Exporting CSV for ${weekLabel}…` })}>
-              <Download className="w-4 h-4" /> Export CSV
-            </Button>
+    <div className="space-y-5">
+      {/* Week selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-2xl font-black">Weekly Reports</h2>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-card border border-border rounded-xl px-2 py-1 shadow-card">
+            <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-semibold px-2 whitespace-nowrap">{weekLabel}</span>
+            <button onClick={() => setWeekOffset(weekOffset + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors" disabled={weekOffset >= 0}>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
-        </div>
-      </div>
-
-      <div className="px-5 space-y-5">
-        <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 && !attentionDismissed ? 1 : 0} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <CheckinRatesCard seniors={seniorRates} overallRate={overallRate} lastWeekRate={overallRate - 3} seniorCount={4} />
-          <MoodTrendsCard seniors={moodData} />
-        </div>
-
-        {showAttention && (
-          <div
-            className="rounded-2xl p-5 border shadow-card"
-            style={{
-              background: "hsl(var(--status-alert) / 0.06)",
-              borderColor: "hsl(var(--status-alert) / 0.3)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-5 h-5" style={{ color: "hsl(var(--status-alert))" }} />
-              <h3 className="font-black text-base" style={{ color: "hsl(var(--status-alert))" }}>
-                Attention Needed
-              </h3>
-            </div>
-            <p className="text-sm text-foreground leading-relaxed">
-              Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times. Consider a wellness call.
-            </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/seniors/demo-dorothy")}>
-                View Dorothy's Profile →
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs gap-1.5 font-bold"
-                style={{ borderColor: "hsl(var(--status-checked) / 0.4)", color: "hsl(var(--status-checked))" }}
-                onClick={handleMarkSafeFromReport}
-              >
-                ✓ Mark Safe
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Senior Summaries */}
-        <div>
-          <h3 className="text-lg font-black mb-3">Senior Summaries</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {seniorSummaries.map((s) => (
-              <div key={s.name} className="space-y-2">
-                <SeniorSummaryCard {...s} onViewProfile={() => navigate(`/seniors/${s.id}`)} />
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 rounded-xl font-bold text-xs gap-1.5"
-                    onClick={() => openCompose(s, "email")}
-                  >
-                    <Send className="w-3.5 h-3.5" /> Email {s.name.split(" ")[0]}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 rounded-xl font-bold text-xs gap-1.5"
-                    onClick={() => openCompose(s, "sms")}
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" /> SMS {s.name.split(" ")[0]}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Weekly Digest Preview */}
-        <div className="bg-card rounded-2xl border border-border shadow-card p-5">
-          <h3 className="font-black text-base mb-1">Weekly Email Digest</h3>
-          <p className="text-sm text-muted-foreground mb-2">
-            A summary like this is automatically emailed to you every Sunday at 8 AM.
-          </p>
-          <p className="text-xs text-muted-foreground mb-3">
-            Next digest: Sunday, Mar 1 at 8:00 AM
-          </p>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => toast({ title: "Preview Sent", description: "A preview digest email has been sent to your inbox." })}>
-            <Mail className="w-4 h-4" /> Send Preview Email
+          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => toast({ title: "Export Started", description: `Exporting CSV for ${weekLabel}…` })}>
+            <Download className="w-4 h-4" /> Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Compose Message Modal */}
-      <ComposeMessageModal
-        open={composeOpen}
-        onOpenChange={setComposeOpen}
-        senior={composeSenior}
-        channel={composeChannel}
-        weekLabel={weekLabel}
-      />
+      <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 && !attentionDismissed ? 1 : 0} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <CheckinRatesCard seniors={seniorRates} overallRate={overallRate} lastWeekRate={overallRate - 3} seniorCount={4} />
+        <MoodTrendsCard seniors={moodData} />
+      </div>
+
+      {showAttention && (
+        <div className="rounded-2xl p-5 border shadow-card" style={{ background: "hsl(var(--status-alert) / 0.06)", borderColor: "hsl(var(--status-alert) / 0.3)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5" style={{ color: "hsl(var(--status-alert))" }} />
+            <h3 className="font-black text-base" style={{ color: "hsl(var(--status-alert))" }}>Attention Needed</h3>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed">
+            Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/seniors/demo-dorothy")}>
+              View Dorothy's Profile →
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 font-bold" style={{ borderColor: "hsl(var(--status-checked) / 0.4)", color: "hsl(var(--status-checked))" }} onClick={handleMarkSafeFromReport}>
+              ✓ Mark Safe
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h3 className="text-lg font-black mb-3">Senior Summaries</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {seniorSummaries.map((s) => (
+            <div key={s.name} className="space-y-2">
+              <SeniorSummaryCard {...s} onViewProfile={() => navigate(`/seniors/${s.id}`)} />
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 rounded-xl font-bold text-xs gap-1.5" onClick={() => openCompose(s, "email")}>
+                  <Send className="w-3.5 h-3.5" /> Email {s.name.split(" ")[0]}
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 rounded-xl font-bold text-xs gap-1.5" onClick={() => openCompose(s, "sms")}>
+                  <MessageSquare className="w-3.5 h-3.5" /> SMS {s.name.split(" ")[0]}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5">
+        <h3 className="font-black text-base mb-1">Weekly Email Digest</h3>
+        <p className="text-sm text-muted-foreground mb-2">A summary is automatically emailed every Sunday at 8 AM.</p>
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => toast({ title: "Preview Sent", description: "A preview digest email has been sent." })}>
+          <Mail className="w-4 h-4" /> Send Preview Email
+        </Button>
+      </div>
+
+      <ComposeMessageModal open={composeOpen} onOpenChange={setComposeOpen} senior={composeSenior} channel={composeChannel} weekLabel={weekLabel} />
     </div>
   );
 }
