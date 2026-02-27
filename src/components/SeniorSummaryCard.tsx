@@ -14,6 +14,7 @@ interface SeniorSummaryCardProps {
   days: DayStatus[];
   avgResponseTime: string;
   avgMoodScore: string;
+  onViewProfile?: () => void;
 }
 
 const dayInitials = ["M", "T", "W", "T", "F", "S", "S"];
@@ -31,7 +32,7 @@ function dayBoxColor(s: DayStatus) {
 }
 
 export default function SeniorSummaryCard({
-  name, age, initials, streak, weekRate, days, avgResponseTime, avgMoodScore,
+  name, age, initials, streak, weekRate, days, avgResponseTime, avgMoodScore, onViewProfile,
 }: SeniorSummaryCardProps) {
   const [open, setOpen] = useState(false);
   const pill = ratePillColor(weekRate);
@@ -88,7 +89,7 @@ export default function SeniorSummaryCard({
 
           <Textarea placeholder="Add a note about this senior..." className="text-sm min-h-[60px] rounded-xl" />
 
-          <Button variant="ghost" size="sm" className="text-xs px-0">
+          <Button variant="ghost" size="sm" className="text-xs px-0" onClick={onViewProfile}>
             View Full Profile →
           </Button>
         </div>
