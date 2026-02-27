@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import WeeklyStatsRow from "@/components/WeeklyStatsRow";
@@ -55,6 +55,7 @@ export default function ReportsPage() {
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [sendingSms, setSendingSms] = useState<string | null>(null);
   const [attentionDismissed, setAttentionDismissed] = useState(false);
   const seniorRates = getSeniorRates(weekOffset);
   const overallRate = Math.round(seniorRates.reduce((s, r) => s + r.rate, 0) / seniorRates.length);
@@ -69,12 +70,21 @@ export default function ReportsPage() {
 
   const handleSendEmail = async (name: string, email: string) => {
     setSendingEmail(name);
-    // Simulate sending email
     await new Promise(r => setTimeout(r, 1200));
     setSendingEmail(null);
     toast({
       title: "Report Emailed",
       description: `Weekly report sent to ${name} (${email}).`,
+    });
+  };
+
+  const handleSendSms = async (name: string) => {
+    setSendingSms(name);
+    await new Promise(r => setTimeout(r, 1000));
+    setSendingSms(null);
+    toast({
+      title: "SMS Sent",
+      description: `Weekly report SMS sent to ${name}.`,
     });
   };
 
@@ -169,19 +179,34 @@ export default function ReportsPage() {
               return (
                 <div key={s.name} className="space-y-2">
                   <SeniorSummaryCard {...s} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full rounded-xl font-bold text-xs gap-1.5"
-                    disabled={sendingEmail === s.name}
-                    onClick={() => handleSendEmail(s.name, sr?.email || "contact@email.com")}
-                  >
-                    {sendingEmail === s.name ? (
-                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
-                    ) : (
-                      <><Send className="w-3.5 h-3.5" /> Send Report to {s.name.split(" ")[0]}</>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 rounded-xl font-bold text-xs gap-1.5"
+                      disabled={sendingEmail === s.name}
+                      onClick={() => handleSendEmail(s.name, sr?.email || "contact@email.com")}
+                    >
+                      {sendingEmail === s.name ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                      ) : (
+                        <><Send className="w-3.5 h-3.5" /> Email {s.name.split(" ")[0]}</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 rounded-xl font-bold text-xs gap-1.5"
+                      disabled={sendingSms === s.name}
+                      onClick={() => handleSendSms(s.name)}
+                    >
+                      {sendingSms === s.name ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                      ) : (
+                        <><MessageSquare className="w-3.5 h-3.5" /> SMS {s.name.split(" ")[0]}</>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               );
             })}
