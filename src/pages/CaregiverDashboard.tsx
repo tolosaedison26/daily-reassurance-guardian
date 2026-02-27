@@ -419,7 +419,7 @@ export default function CaregiverDashboard() {
               <div
                 key={senior.connection_id}
                 className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-transform"
-                onClick={() => setHistoryTarget({ seniorId: senior.senior_id, name: senior.full_name })}
+                onClick={() => navigate(`/seniors/${senior.senior_id}`)}
                 style={{
                   borderColor:
                     senior.status === "checked"
