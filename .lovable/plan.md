@@ -1,35 +1,78 @@
 
 
-## Plan: Align Senior Dashboard with Caregiver Dashboard
+## Plan: Senior Profile & History Page (`/seniors/:id`)
 
-### Key Differences Identified
+This is a large feature with 7 new components and a new page. All sections will use mock data initially (Margaret Ross, 47-day streak, 30 days of history). No DB schema changes needed — the existing `managed_seniors` and `managed_senior_contacts` tables have all required fields.
 
-Caregiver Dashboard uses `max-w-3xl mx-auto` container, consistent `p-4`/`p-5` card padding, standard button heights (`h-9` to `h-14`), and `w-14 h-14` avatars. Senior Dashboard lacks a max-width container, uses oversized elements (check-in button `h-20 text-2xl`, mic button `w-20 h-20`, status card emoji `text-5xl`), and has inconsistent spacing.
+### New Files to Create
 
-### Changes
+**1. `src/pages/SeniorProfilePage.tsx`** — Main page orchestrator
+- Route: `/seniors/:id`
+- Loads senior data from `managed_seniors` table (or falls back to mock data for demo IDs)
+- `max-w-[960px] mx-auto` container
+- Desktop: 2-column grid (60/40 split) for calendar+timeline (left) and stats+mood+notes+settings (right)
+- Mobile: single column stacked
+- Breadcrumb: "← Dashboard" back to `/`
 
-**1. `src/pages/SeniorHome.tsx`**
-- Wrap main content in `max-w-3xl mx-auto` container (matching caregiver)
-- Reduce check-in button: `h-20 text-2xl` to `h-14 text-lg`
-- Scale down status card emoji from `text-5xl` to `text-3xl`
-- Reduce status card title from `text-xl` to `text-lg`
-- Reduce greeting from `text-3xl` to match caregiver's `text-3xl` (already matches -- keep)
-- Reduce Emergency 911 icon container from `w-12 h-12` to `w-11 h-11` and Calm Sounds icon similarly
-- Adjust top bar padding to `pt-10 pb-4` (matching caregiver's `pt-10 pb-4`)
-- Tighten vertical gap in main content area from `gap-6` to `gap-4`
-- Add bottom padding `pb-10` for scroll clearance
+**2. `src/components/senior-profile/SeniorProfileHeader.tsx`**
+- Avatar (72px mobile, 88px desktop) with initials + indigo bg
+- Name, relationship badge, age, phone with copy icon
+- Status pill (green/amber/red/grey) + last check-in timestamp
+- Action buttons row: Send Reminder (outline+Bell), Mark Safe (outline green+CheckCircle), Edit Profile (ghost+Pencil), More (dropdown with Pause, Contacts, Download CSV, Archive, Remove)
+- Mobile: buttons in `overflow-x-auto` horizontal scroll
+- Confirmation popovers for Send Reminder and Mark Safe
+- Destructive modal for Remove (type "REMOVE" to confirm)
 
-**2. `src/components/VoiceRecorder.tsx`**
-- Reduce mic button from `w-20 h-20` to `w-14 h-14`
-- Reduce mic/square icons from `w-8 h-8` to `w-6 h-6`
-- Reduce card padding from `p-5` to `p-4`
+**3. `src/components/senior-profile/QuickStatsStrip.tsx`**
+- 4 stat chips: Streak (Flame), This Week (x/7), This Month (%), Avg Response (Clock)
+- `grid-cols-2 md:grid-cols-4` layout
+- Same card style as dashboard stat chips (rounded-2xl, border, shadow-card)
 
-**3. `src/components/InviteCodeCard.tsx`**
-- Reduce code display text from `text-3xl` to `text-2xl`
-- Reduce card padding from `p-5` to `p-4`
+**4. `src/components/senior-profile/CheckinCalendar.tsx`**
+- Month navigator with ← → arrows
+- 7-column grid (Sun–Sat headers)
+- Day cells: green (checked), red (missed), amber (late), grey outline (no schedule), empty (future)
+- Today: ring highlight
+- Click day → inline expandable detail row (time, mood, note)
+- Legend row below calendar
+- Mock 30 days of data for Margaret
 
-**4. `src/components/EmergencyContacts.tsx`**
-- No changes needed -- already uses consistent sizing
+**5. `src/components/senior-profile/SeniorMoodTrendsCard.tsx`** (single-senior version, distinct from existing multi-senior MoodTrendsCard)
+- Tab switcher: 7 Days / 30 Days
+- 7-day: row of emoji icons with day labels
+- 30-day: simple SVG dot+line chart (CSS/SVG only, no library)
+- Summary line below each view
 
-All changes are CSS/className adjustments only. No logic or data changes.
+**6. `src/components/senior-profile/ActivityTimeline.tsx`**
+- Vertical timeline with left-border connector
+- Event types: CheckCircle, XCircle, Bell, AlertTriangle, Shield, FileText, Pencil, Play
+- Each row: icon + label + timestamp (right-aligned)
+- "Load more" ghost button after 10 events
+- Mock ~15 events
+
+**7. `src/components/senior-profile/CaregiverNotes.tsx`**
+- Notes list (light grey cards with date, edit/delete)
+- Inline edit: textarea + Save/Cancel
+- Inline delete confirmation
+- Add note: textarea (max 500 chars, char count) + "Save Note" button
+- Local state for now (no new DB table — mock data)
+
+**8. `src/components/senior-profile/ProfileSettingsSummary.tsx`**
+- Read-only card showing schedule, grace period, mood check, active days, vacation mode, contact count
+- "Edit" link → `/seniors/:id/edit`
+- Contact count links to `/seniors/:id/contacts`
+
+### Route Changes (`src/App.tsx`)
+- Add `<Route path="/seniors/:id" element={<SeniorProfilePage />} />` **before** the `/seniors/:id/edit` route
+
+### Dashboard Link (`src/pages/CaregiverDashboard.tsx`)
+- Change senior card `onClick` from opening `CheckInHistoryPanel` to navigating to `/seniors/:id`
+- Keep existing edit and contacts icon buttons
+
+### Technical Notes
+- All components use existing UI primitives (Button, Card, Badge, Popover, DropdownMenu, AlertDialog, Skeleton)
+- Icons: lucide-react only
+- 30-day mood chart: pure SVG element, no recharts
+- Responsive breakpoints via Tailwind `md:` and `lg:` prefixes
+- Loading state: Skeleton placeholders for each section
 
