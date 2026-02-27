@@ -19,6 +19,7 @@ import VoiceRecorder from "@/components/VoiceRecorder";
 import EmergencyContacts from "@/components/EmergencyContacts";
 import SeniorActivityPanel from "@/components/SeniorActivityPanel";
 import InviteCodeCard from "@/components/InviteCodeCard";
+import AccountSettingsPage from "@/pages/AccountSettingsPage";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -28,6 +29,7 @@ export default function SeniorHome() {
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [showSound, setShowSound] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
@@ -78,6 +80,7 @@ export default function SeniorHome() {
 
   const firstName = profile?.full_name?.split(" ")[0] || "Friend";
 
+  if (showAccountSettings) return <AccountSettingsPage onBack={() => setShowAccountSettings(false)} />;
   if (showSound) return <SoundPlayer onBack={() => setShowSound(false)} />;
 
   const isChecked = status === "checked";
@@ -103,9 +106,9 @@ export default function SeniorHome() {
             <Bell className="w-5 h-5 text-muted-foreground" />
           </button>
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => setShowAccountSettings(true)}
             className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
-            aria-label="Settings"
+            aria-label="Account Settings"
           >
             <Settings className="w-5 h-5 text-muted-foreground" />
           </button>

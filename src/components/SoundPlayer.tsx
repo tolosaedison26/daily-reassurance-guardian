@@ -63,7 +63,9 @@ export default function SoundPlayer({ onBack }: { onBack: () => void }) {
   }, []);
 
   const playingSound = SOUNDS.find((s) => s.id === playingId);
-  const filteredSounds = activeCategory === "favorites"
+  const filteredSounds = activeCategory === "all"
+    ? SOUNDS
+    : activeCategory === "favorites"
     ? SOUNDS.filter((s) => favoriteIds.has(s.id))
     : SOUNDS.filter((s) => s.category === activeCategory);
 
