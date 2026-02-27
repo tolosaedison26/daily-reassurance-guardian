@@ -15,6 +15,7 @@ import ReportsPage from "./pages/ReportsPage";
 import AddEditSeniorPage from "./pages/AddEditSeniorPage";
 import ContactsEscalationPage from "./pages/ContactsEscalationPage";
 import SeniorProfilePage from "./pages/SeniorProfilePage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/seniors/:id/contacts" element={<ContactsEscalationPage />} />
             <Route path="/ack/:token" element={<AcknowledgmentPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
