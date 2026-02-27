@@ -38,7 +38,7 @@ export default function QuickStatsStrip({ streak, weekCheckins, weekTotal, month
       </div>
 
       {/* This Month */}
-      <div className="bg-card rounded-2xl p-3 sm:p-4 border border-border shadow-card min-w-0">
+      <div className="bg-card rounded-2xl p-3 sm:p-4 border border-border shadow-card min-w-0 flex flex-col items-center justify-center text-center">
         <p className="text-lg sm:text-2xl font-black leading-none truncate">{monthRate}%</p>
         <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">check-in rate</p>
         {monthTrend !== 0 && (
