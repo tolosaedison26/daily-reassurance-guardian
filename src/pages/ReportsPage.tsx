@@ -32,13 +32,13 @@ const moodData: { name: string; days: MoodValue[]; trending: string; trendEmoji:
 type DayStatus = "checked" | "missed" | "none";
 
 const seniorSummaries: {
-  name: string; age: number; initials: string; streak: number; weekRate: number;
+  id: string; name: string; age: number; initials: string; streak: number; weekRate: number;
   days: DayStatus[]; avgResponseTime: string; avgMoodScore: string;
 }[] = [
-  { name: "Margaret Ross", age: 78, initials: "MR", streak: 47, weekRate: 95, days: ["checked", "checked", "checked", "checked", "checked", "checked", "none"], avgResponseTime: "2 min", avgMoodScore: "😊 1.1 avg mood score this week" },
-  { name: "Frank Johnson", age: 82, initials: "FJ", streak: 12, weekRate: 86, days: ["checked", "checked", "checked", "checked", "missed", "checked", "checked"], avgResponseTime: "6 min", avgMoodScore: "😊 1.3 avg mood score this week" },
-  { name: "Harold Chen", age: 75, initials: "HC", streak: 3, weekRate: 71, days: ["checked", "none", "checked", "checked", "missed", "none", "checked"], avgResponseTime: "11 min", avgMoodScore: "😐 2.0 avg mood score this week" },
-  { name: "Dorothy Wilson", age: 75, initials: "DW", streak: 0, weekRate: 43, days: ["checked", "missed", "checked", "missed", "missed", "missed", "missed"], avgResponseTime: "—", avgMoodScore: "😔 2.7 avg mood score this week" },
+  { id: "demo-margaret", name: "Margaret Ross", age: 78, initials: "MR", streak: 47, weekRate: 95, days: ["checked", "checked", "checked", "checked", "checked", "checked", "none"], avgResponseTime: "2 min", avgMoodScore: "😊 1.1 avg mood score this week" },
+  { id: "demo-frank", name: "Frank Johnson", age: 82, initials: "FJ", streak: 12, weekRate: 86, days: ["checked", "checked", "checked", "checked", "missed", "checked", "checked"], avgResponseTime: "6 min", avgMoodScore: "😊 1.3 avg mood score this week" },
+  { id: "demo-harold", name: "Harold Chen", age: 75, initials: "HC", streak: 3, weekRate: 71, days: ["checked", "none", "checked", "checked", "missed", "none", "checked"], avgResponseTime: "11 min", avgMoodScore: "😐 2.0 avg mood score this week" },
+  { id: "demo-dorothy", name: "Dorothy Wilson", age: 75, initials: "DW", streak: 0, weekRate: 43, days: ["checked", "missed", "checked", "missed", "missed", "missed", "missed"], avgResponseTime: "—", avgMoodScore: "😔 2.7 avg mood score this week" },
 ];
 
 function getWeekLabel(offset: number) {
@@ -165,7 +165,7 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {seniorSummaries.map((s) => (
               <div key={s.name} className="space-y-2">
-                <SeniorSummaryCard {...s} />
+                <SeniorSummaryCard {...s} onViewProfile={() => navigate(`/seniors/${s.id}`)} />
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
