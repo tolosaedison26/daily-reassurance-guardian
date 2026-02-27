@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import WeeklyStatsRow from "@/components/WeeklyStatsRow";
@@ -12,10 +12,10 @@ import SeniorSummaryCard from "@/components/SeniorSummaryCard";
 function getSeniorRates(offset: number) {
   const jitter = Math.abs(offset) % 5;
   return [
-    { name: "Margaret Ross", rate: Math.min(100, 95 - jitter * 3), mood: jitter > 2 ? "😐" : "😊" },
-    { name: "Frank Johnson", rate: Math.min(100, 86 + jitter * 2), mood: "😐" },
-    { name: "Harold Chen", rate: Math.min(100, 71 - jitter * 5), mood: jitter > 1 ? "😔" : "😐" },
-    { name: "Dorothy Wilson", rate: Math.min(100, 43 + jitter * 8), mood: jitter > 3 ? "😐" : "😔" },
+    { name: "Margaret Ross", rate: Math.min(100, 95 - jitter * 3), mood: jitter > 2 ? "😐" : "😊", email: "margaret.ross@email.com" },
+    { name: "Frank Johnson", rate: Math.min(100, 86 + jitter * 2), mood: "😐", email: "frank.johnson@email.com" },
+    { name: "Harold Chen", rate: Math.min(100, 71 - jitter * 5), mood: jitter > 1 ? "😔" : "😐", email: "harold.chen@email.com" },
+    { name: "Dorothy Wilson", rate: Math.min(100, 43 + jitter * 8), mood: jitter > 3 ? "😐" : "😔", email: "dorothy.wilson@email.com" },
   ];
 }
 
@@ -54,12 +54,40 @@ export default function ReportsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [attentionDismissed, setAttentionDismissed] = useState(false);
   const seniorRates = getSeniorRates(weekOffset);
   const overallRate = Math.round(seniorRates.reduce((s, r) => s + r.rate, 0) / seniorRates.length);
   const jitter = Math.abs(weekOffset) % 5;
   const totalCheckIns = Math.max(10, 26 - jitter * 3);
   const checkInRate = overallRate;
   const missedCheckIns = Math.max(0, 6 + jitter * 2);
+
+  // Determine if Dorothy needs attention (rate < 50% this week)
+  const dorothyRate = seniorRates.find(s => s.name === "Dorothy Wilson")?.rate ?? 0;
+  const showAttention = weekOffset === 0 && dorothyRate < 50 && !attentionDismissed;
+
+  const handleSendEmail = async (name: string, email: string) => {
+    setSendingEmail(name);
+    // Simulate sending email
+    await new Promise(r => setTimeout(r, 1200));
+    setSendingEmail(null);
+    toast({
+      title: "Report Emailed",
+      description: `Weekly report sent to ${name} (${email}).`,
+    });
+  };
+
+  const handleMarkSafeFromReport = () => {
+    setAttentionDismissed(true);
+    // Also sync to sessionStorage for cross-page consistency
+    const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+    if (!existing.includes("dorothy-attention")) {
+      existing.push("dorothy-attention");
+      sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
+    }
+    toast({ title: "Dorothy Wilson marked safe", description: "Attention alert dismissed." });
+  };
 
   return (
     <div className="min-h-screen bg-background pb-10">
@@ -89,7 +117,7 @@ export default function ReportsPage() {
 
       <div className="px-5 space-y-5">
         {/* Section 1: Stats */}
-        <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 ? 1 : 0} />
+        <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 && !attentionDismissed ? 1 : 0} />
 
         {/* Section 2 & 4: Check-in Rates + Mood Trends side by side on desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -97,35 +125,66 @@ export default function ReportsPage() {
           <MoodTrendsCard seniors={moodData} />
         </div>
 
-        {/* Section 3: Attention Needed */}
-        <div
-          className="rounded-2xl p-5 border shadow-card"
-          style={{
-            background: "hsl(var(--status-alert) / 0.06)",
-            borderColor: "hsl(var(--status-alert) / 0.3)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-5 h-5" style={{ color: "hsl(var(--status-alert))" }} />
-            <h3 className="font-black text-base" style={{ color: "hsl(var(--status-alert))" }}>
-              Attention Needed
-            </h3>
+        {/* Section 3: Attention Needed — synced with safe status */}
+        {showAttention && (
+          <div
+            className="rounded-2xl p-5 border shadow-card"
+            style={{
+              background: "hsl(var(--status-alert) / 0.06)",
+              borderColor: "hsl(var(--status-alert) / 0.3)",
+            }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5" style={{ color: "hsl(var(--status-alert))" }} />
+              <h3 className="font-black text-base" style={{ color: "hsl(var(--status-alert))" }}>
+                Attention Needed
+              </h3>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">
+              Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times. Consider a wellness call.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/")}>
+                View Dorothy's Profile →
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5 font-bold"
+                style={{ borderColor: "hsl(var(--status-checked) / 0.4)", color: "hsl(var(--status-checked))" }}
+                onClick={handleMarkSafeFromReport}
+              >
+                ✓ Mark Safe
+              </Button>
+            </div>
           </div>
-          <p className="text-sm text-foreground leading-relaxed">
-            Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times. Consider a wellness call.
-          </p>
-          <Button variant="outline" size="sm" className="mt-3 text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/")}>
-            View Dorothy's Profile →
-          </Button>
-        </div>
+        )}
 
-        {/* Section 5: Individual Senior Summaries */}
+        {/* Section 5: Individual Senior Summaries with Send Email */}
         <div>
           <h3 className="text-lg font-black mb-3">Senior Summaries</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {seniorSummaries.map((s) => (
-              <SeniorSummaryCard key={s.name} {...s} />
-            ))}
+            {seniorSummaries.map((s) => {
+              const sr = seniorRates.find(r => r.name === s.name);
+              return (
+                <div key={s.name} className="space-y-2">
+                  <SeniorSummaryCard {...s} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full rounded-xl font-bold text-xs gap-1.5"
+                    disabled={sendingEmail === s.name}
+                    onClick={() => handleSendEmail(s.name, sr?.email || "contact@email.com")}
+                  >
+                    {sendingEmail === s.name ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                    ) : (
+                      <><Send className="w-3.5 h-3.5" /> Send Report to {s.name.split(" ")[0]}</>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
