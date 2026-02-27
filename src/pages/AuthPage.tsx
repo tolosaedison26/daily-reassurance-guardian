@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { createUserProfile } from "@/lib/supabase-helpers";
 import LandingPage from "./LandingPage";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 type Role = "senior" | "caregiver";
 
 export default function AuthPage() {
@@ -26,6 +26,19 @@ export default function AuthPage() {
     setLoading(true);
     setError("");
     setSuccess("");
+
+    if (mode === "forgot") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess("Password reset link sent! Check your email.");
+      }
+      setLoading(false);
+      return;
+    }
 
     if (mode === "signup") {
       const { data, error } = await supabase.auth.signUp({
@@ -84,10 +97,10 @@ export default function AuthPage() {
       <div className="flex-1 px-5 pb-10 max-w-md mx-auto w-full">
         <div className="bg-card rounded-3xl p-6 shadow-card border border-border">
           <h2 className="text-2xl font-black text-center mb-1">
-            {mode === "login" ? "Welcome back!" : "Create your account"}
+            {mode === "login" ? "Welcome back!" : mode === "signup" ? "Create your account" : "Reset Password"}
           </h2>
           <p className="text-muted-foreground text-center text-sm mb-6">
-            {mode === "login" ? "Sign in to continue" : "Join Daily Guardian today"}
+            {mode === "login" ? "Sign in to continue" : mode === "signup" ? "Join Daily Guardian today" : "Enter your email to receive a reset link"}
           </p>
 
           {/* Role selector */}
@@ -153,19 +166,33 @@ export default function AuthPage() {
                 className="mt-1 h-12 text-base rounded-xl"
               />
             </div>
-            <div>
-              <Label htmlFor="password" className="text-base font-bold">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className="mt-1 h-12 text-base rounded-xl"
-              />
-            </div>
+            {mode !== "forgot" && (
+              <div>
+                <Label htmlFor="password" className="text-base font-bold">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="mt-1 h-12 text-base rounded-xl"
+                />
+              </div>
+            )}
+
+            {mode === "login" && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }}
+                  className="text-primary text-sm font-semibold hover:underline underline-offset-4"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold">
@@ -184,24 +211,34 @@ export default function AuthPage() {
               className="w-full h-14 text-lg font-black rounded-2xl border-0 shadow-btn mt-2"
               style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
             >
-              {loading ? "Please wait…" : mode === "login" ? "Sign In" : "Create Account"}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Sign In" : mode === "signup" ? "Create Account" : "Send Reset Link"}
             </Button>
           </form>
 
-          <div className="mt-5 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "login" ? "signup" : "login");
-                setError("");
-                setSuccess("");
-              }}
-              className="text-primary font-bold text-sm underline-offset-4 hover:underline"
-            >
-              {mode === "login"
-                ? "New here? Create an account"
-                : "Already have an account? Sign in"}
-            </button>
+          <div className="mt-5 text-center space-y-2">
+            {mode === "forgot" ? (
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+                className="text-primary font-bold text-sm underline-offset-4 hover:underline"
+              >
+                ← Back to Sign In
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  setError("");
+                  setSuccess("");
+                }}
+                className="text-primary font-bold text-sm underline-offset-4 hover:underline"
+              >
+                {mode === "login"
+                  ? "New here? Create an account"
+                  : "Already have an account? Sign in"}
+              </button>
+            )}
           </div>
         </div>
       </div>
