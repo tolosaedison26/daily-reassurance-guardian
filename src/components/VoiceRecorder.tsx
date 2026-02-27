@@ -89,7 +89,7 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
 
   if (sent) {
     return (
-      <div className="bg-card rounded-2xl p-5 border border-border shadow-card text-center">
+      <div className="bg-card rounded-2xl p-4 border border-border shadow-card text-center">
         <p className="text-2xl mb-1">💌</p>
         <p className="font-bold">Voice message sent!</p>
         <p className="text-sm text-muted-foreground">Your family will hear it shortly.</p>
@@ -98,7 +98,7 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
   }
 
   return (
-    <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
+    <div className="bg-card rounded-2xl p-4 border border-border shadow-card">
       <p className="font-semibold text-base mb-4">Send a voice message to your family</p>
 
       {!audioBlob ? (
@@ -107,7 +107,7 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
             onPointerDown={startRecording}
             onPointerUp={recording ? stopRecording : undefined}
             onPointerLeave={recording ? stopRecording : undefined}
-            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
               recording ? "scale-110" : "hover:scale-105 active:scale-95"
             }`}
             style={{
@@ -117,9 +117,9 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
             }}
           >
             {recording ? (
-              <Square className="w-8 h-8 text-white" />
+              <Square className="w-6 h-6 text-white" />
             ) : (
-              <Mic className="w-8 h-8 text-white" />
+              <Mic className="w-6 h-6 text-white" />
             )}
           </button>
           {recording ? (
