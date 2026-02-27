@@ -38,6 +38,7 @@ export default function CaregiverDashboard() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [historyTarget, setHistoryTarget] = useState<{ seniorId: string; name: string } | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const { subscribe } = usePushNotifications();
 
   useEffect(() => {
@@ -307,9 +308,25 @@ export default function CaregiverDashboard() {
       {/* Summary row */}
       {(seniors.length > 0 || alertCount > 0) && (
         <div className="px-5 mb-5">
+          {statusFilter && (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-muted-foreground">
+                Showing: <span className="capitalize text-foreground">{statusFilter}</span>
+              </p>
+              <button
+                onClick={() => setStatusFilter(null)}
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                Show All
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Total */}
-            <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
+            <button
+              onClick={() => setStatusFilter(statusFilter === "total" ? null : "total")}
+              className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "total" ? "ring-2 ring-primary" : "border-border"}`}
+            >
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "hsl(var(--muted))" }}
@@ -320,9 +337,12 @@ export default function CaregiverDashboard() {
                 <p className="text-3xl font-black leading-none">{seniors.length + alertCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Total</p>
               </div>
-            </div>
+            </button>
             {/* Safe */}
-            <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
+            <button
+              onClick={() => setStatusFilter(statusFilter === "safe" ? null : "safe")}
+              className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "safe" ? "ring-2 ring-primary" : "border-border"}`}
+            >
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "hsl(var(--status-checked) / 0.12)" }}
@@ -335,9 +355,12 @@ export default function CaregiverDashboard() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">✓ Safe</p>
               </div>
-            </div>
+            </button>
             {/* Pending */}
-            <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
+            <button
+              onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
+              className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "pending" ? "ring-2 ring-primary" : "border-border"}`}
+            >
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "hsl(var(--status-pending) / 0.12)" }}
@@ -350,13 +373,14 @@ export default function CaregiverDashboard() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">⏳ Pending</p>
               </div>
-            </div>
+            </button>
             {/* Alert */}
-            <div
-              className="rounded-2xl p-4 border shadow-card flex items-center gap-3"
+            <button
+              onClick={() => setStatusFilter(statusFilter === "alert" ? null : "alert")}
+              className={`rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "alert" ? "ring-2 ring-primary" : ""}`}
               style={{
                 background: alertCount > 0 ? "hsl(var(--status-alert) / 0.06)" : "hsl(var(--card))",
-                borderColor: alertCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))",
+                borderColor: statusFilter === "alert" ? undefined : (alertCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))"),
               }}
             >
               <div
@@ -371,7 +395,7 @@ export default function CaregiverDashboard() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">🚨 Alert</p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       )}
@@ -426,7 +450,13 @@ export default function CaregiverDashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {seniors.map((senior) => (
+            {seniors.filter((s) => {
+              if (!statusFilter || statusFilter === "total") return true;
+              if (statusFilter === "safe") return s.status === "checked";
+              if (statusFilter === "pending") return s.status === "not-checked";
+              if (statusFilter === "alert") return false; // alerts shown separately
+              return true;
+            }).map((senior) => (
               <div
                 key={senior.connection_id}
                 className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-transform"
