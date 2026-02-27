@@ -19,6 +19,8 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const MAX_DURATION = 120; // 2 minutes max
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -37,10 +39,17 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
         stream.getTracks().forEach((t) => t.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // collect data every 1s for reliability
       setRecording(true);
       setDuration(0);
-      timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
+      timerRef.current = setInterval(() => {
+        setDuration((d) => {
+          if (d + 1 >= MAX_DURATION) {
+            stopRecording();
+          }
+          return d + 1;
+        });
+      }, 1000);
     } catch {
       alert("Microphone access is required to send a voice message.");
     }
@@ -104,9 +113,7 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
       {!audioBlob ? (
         <div className="flex flex-col items-center gap-3">
           <button
-            onPointerDown={startRecording}
-            onPointerUp={recording ? stopRecording : undefined}
-            onPointerLeave={recording ? stopRecording : undefined}
+            onClick={recording ? stopRecording : startRecording}
             className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
               recording ? "scale-110" : "hover:scale-105 active:scale-95"
             }`}
@@ -124,10 +131,10 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
           </button>
           {recording ? (
             <p className="text-sm font-bold" style={{ color: "hsl(0 80% 60%)" }}>
-              🔴 Recording {formatDuration(duration)} — release to stop
+              🔴 Recording {formatDuration(duration)} — tap to stop
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">Hold the button to record</p>
+            <p className="text-xs text-muted-foreground">Tap to start recording (up to 2 min)</p>
           )}
         </div>
       ) : (
