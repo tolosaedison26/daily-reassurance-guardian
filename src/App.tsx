@@ -13,6 +13,7 @@ import AcknowledgmentPage from "./pages/AcknowledgmentPage";
 import NotFound from "./pages/NotFound";
 import ReportsPage from "./pages/ReportsPage";
 import AddEditSeniorPage from "./pages/AddEditSeniorPage";
+import ContactsEscalationPage from "./pages/ContactsEscalationPage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/seniors/new" element={<AddEditSeniorPage />} />
             <Route path="/seniors/:id/edit" element={<AddEditSeniorPage />} />
             <Route path="/seniors/:id/alert" element={<SeniorAlertDetail />} />
+            <Route path="/seniors/:id/contacts" element={<ContactsEscalationPage />} />
             <Route path="/ack/:token" element={<AcknowledgmentPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="*" element={<NotFound />} />
