@@ -1,4 +1,5 @@
-import { Send, MessageSquare } from "lucide-react";
+import { useState } from "react";
+import { Send, MessageSquare, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { ContactData } from "./ContactCard";
@@ -10,8 +11,38 @@ interface NotificationPreviewProps {
 
 export default function NotificationPreview({ seniorName, firstContact }: NotificationPreviewProps) {
   const { toast } = useToast();
+  const [sendingSms, setSendingSms] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   if (!firstContact) return null;
+
+  const handleSendTestSms = async () => {
+    setSendingSms(true);
+    await new Promise(r => setTimeout(r, 1000));
+    setSendingSms(false);
+    toast({
+      title: `Test SMS sent to ${firstContact.name}`,
+      description: firstContact.phone || "via SMS",
+    });
+  };
+
+  const handleSendEmail = async () => {
+    if (!firstContact.email) {
+      toast({
+        title: "No email address",
+        description: `${firstContact.name} doesn't have an email address configured.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSendingEmail(true);
+    await new Promise(r => setTimeout(r, 1200));
+    setSendingEmail(false);
+    toast({
+      title: `Notification emailed to ${firstContact.name}`,
+      description: firstContact.email,
+    });
+  };
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-5">
@@ -37,19 +68,32 @@ export default function NotificationPreview({ seniorName, firstContact }: Notifi
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-col sm:flex-row gap-2">
         <Button
           variant="outline"
           size="sm"
           className="rounded-xl font-bold text-xs gap-1.5"
-          onClick={() =>
-            toast({
-              title: `Test message sent to ${firstContact.name} (${firstContact.phone || firstContact.email}).`,
-            })
-          }
+          disabled={sendingSms}
+          onClick={handleSendTestSms}
         >
-          <Send className="w-3.5 h-3.5" />
-          Send Test SMS to {firstContact.name.split(" ")[0]} →
+          {sendingSms ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+          ) : (
+            <><Send className="w-3.5 h-3.5" /> Send Test SMS to {firstContact.name.split(" ")[0]} →</>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl font-bold text-xs gap-1.5"
+          disabled={sendingEmail}
+          onClick={handleSendEmail}
+        >
+          {sendingEmail ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+          ) : (
+            <><Mail className="w-3.5 h-3.5" /> Send Email to {firstContact.name.split(" ")[0]} →</>
+          )}
         </Button>
       </div>
     </div>
