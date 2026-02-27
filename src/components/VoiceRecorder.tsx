@@ -76,21 +76,29 @@ export default function VoiceRecorder({ seniorId, onSent }: VoiceRecorderProps) 
       .from("voice-messages")
       .upload(path, audioBlob, { contentType: "audio/webm" });
 
-    if (!uploadError) {
-      await (supabase.from as any)("voice_messages").insert({
-        senior_id: seniorId,
-        audio_path: path,
-        duration_seconds: duration,
-      });
-      setSent(true);
-      setTimeout(() => {
-        setSent(false);
-        setAudioBlob(null);
-        setAudioUrl(null);
-        setDuration(0);
-        onSent();
-      }, 2000);
+    if (uploadError) {
+      alert("Failed to upload voice message. Please try again.");
+      setUploading(false);
+      return;
     }
+    const { error: insertError } = await supabase.from("voice_messages").insert({
+      senior_id: seniorId,
+      audio_path: path,
+      duration_seconds: duration,
+    });
+    if (insertError) {
+      alert("Failed to save voice message. Please try again.");
+      setUploading(false);
+      return;
+    }
+    setSent(true);
+    setTimeout(() => {
+      setSent(false);
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setDuration(0);
+      onSent();
+    }, 2000);
     setUploading(false);
   };
 
