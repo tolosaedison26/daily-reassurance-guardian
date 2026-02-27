@@ -5,14 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle, BarChart3, Pencil, PhoneCall, Settings } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Users, Plus, BellRing, AlertTriangle, Pencil, PhoneCall } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
 import CheckInHistoryPanel from "@/components/CheckInHistoryPanel";
 import AlertBanner from "@/components/AlertBanner";
 import AlertSeniorRow from "@/components/AlertSeniorRow";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import AccountSettingsPage from "@/pages/AccountSettingsPage";
+import { SeniorListSkeleton, StatsStripSkeleton } from "@/components/ui/LoadingSkeleton";
+import EmptyState from "@/components/ui/EmptyState";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 interface SeniorStatus {
   connection_id: string;
@@ -25,7 +27,7 @@ interface SeniorStatus {
 
 export default function CaregiverDashboard() {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   const [seniors, setSeniors] = useState<SeniorStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteCode, setInviteCode] = useState("");
@@ -34,7 +36,6 @@ export default function CaregiverDashboard() {
   const [showSearch, setShowSearch] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
-  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [historyTarget, setHistoryTarget] = useState<{ seniorId: string; name: string } | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
@@ -44,15 +45,11 @@ export default function CaregiverDashboard() {
   useEffect(() => {
     if (!user) return;
     loadSeniors();
-
-    // Check notification permission state
     if ("Notification" in window) {
       setNotifPermission(Notification.permission);
     } else {
       setNotifPermission("unsupported");
     }
-
-    // Auto-subscribe if already granted
     if ("Notification" in window && Notification.permission === "granted") {
       subscribe();
     }
@@ -70,8 +67,6 @@ export default function CaregiverDashboard() {
   const loadSeniors = async () => {
     if (!user) return;
     setLoading(true);
-
-    // Load connected seniors (via invite code)
     const { data: connections } = await getConnectedSeniors(user.id);
     const connectedStatuses: SeniorStatus[] = connections
       ? await Promise.all(
@@ -91,7 +86,6 @@ export default function CaregiverDashboard() {
         )
       : [];
 
-    // Load managed seniors (added via wizard)
     const { data: managed } = await supabase
       .from("managed_seniors" as any)
       .select("*")
@@ -116,12 +110,10 @@ export default function CaregiverDashboard() {
     const cleanCode = inviteCode.toUpperCase().trim();
     setConnecting(true);
     setConnectError("");
-
     const { data: result, error } = await supabase.rpc("connect_via_invite_code", {
       p_code: cleanCode,
       p_caregiver_id: user.id,
     });
-
     if (error || !result) {
       setConnectError("Something went wrong. Please try again.");
     } else if ((result as any).success) {
@@ -133,7 +125,6 @@ export default function CaregiverDashboard() {
     } else {
       setConnectError((result as any).error || "Failed to connect. Please check the code.");
     }
-
     setConnecting(false);
   };
 
@@ -149,26 +140,24 @@ export default function CaregiverDashboard() {
 
   const checkedCount = seniors.filter((s) => s.status === "checked").length;
   const notCheckedCount = seniors.filter((s) => s.status === "not-checked").length;
-  const managedCount = seniors.filter((s) => s.is_managed).length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
-  // Demo alert data — shows alert state by default for demo purposes
+  // Demo alert data
   const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(() => {
     const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
     return new Set(stored as string[]);
   });
 
-  // Sync from sessionStorage when window regains focus (e.g. returning from alert detail page)
   useEffect(() => {
     const syncResolved = () => {
       const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
       setResolvedAlerts(new Set(stored as string[]));
     };
     window.addEventListener("focus", syncResolved);
-    // Also sync on route changes by checking on mount
     syncResolved();
     return () => window.removeEventListener("focus", syncResolved);
   }, []);
+
   const allDemoAlerts = [
     {
       seniorId: "demo-alert-1",
@@ -182,52 +171,10 @@ export default function CaregiverDashboard() {
   const demoAlerts = allDemoAlerts.filter(a => !resolvedAlerts.has(a.seniorId));
   const alertCount = demoAlerts.length;
 
-  if (showAccountSettings) return <AccountSettingsPage onBack={() => setShowAccountSettings(false)} />;
-
   return (
-    <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
-      <div className="w-full max-w-3xl mx-auto">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-10 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">☀️</span>
-          <span className="text-lg font-black tracking-tight" style={{ color: "hsl(var(--primary))" }}>
-            Daily Guardian
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowActivity(true)}
-            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center relative"
-            aria-label="Recent activity"
-          >
-            <Bell className="w-5 h-5 text-muted-foreground" />
-            {seniors.length > 0 && (
-              <span
-                className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-background"
-                style={{ background: "hsl(var(--primary))" }}
-              />
-            )}
-          </button>
-          <button
-            onClick={() => setShowAccountSettings(true)}
-            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
-            aria-label="Account Settings"
-          >
-            <Settings className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <button
-            onClick={signOut}
-            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-5 h-5 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-
+    <div className="space-y-5">
       {/* Greeting */}
-      <div className="px-5 mb-4">
+      <div>
         <h1 className="text-3xl font-black leading-tight">Hi {firstName}! 👋</h1>
         <p className="text-muted-foreground text-base mt-0.5">
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -236,7 +183,7 @@ export default function CaregiverDashboard() {
 
       {/* Push notification prompt */}
       {notifPermission === "default" && (
-        <div className="mx-5 mb-4 bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
+        <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "hsl(var(--primary) / 0.12)" }}
@@ -249,11 +196,7 @@ export default function CaregiverDashboard() {
           </div>
           <Button
             onClick={async () => {
-              try {
-                await subscribe();
-              } catch (e) {
-                console.error("Enable notifications error:", e);
-              }
+              try { await subscribe(); } catch (e) { console.error("Enable notifications error:", e); }
               if ("Notification" in window) setNotifPermission(Notification.permission);
             }}
             className="shrink-0 h-9 px-4 rounded-xl font-black border-0 text-sm"
@@ -265,38 +208,36 @@ export default function CaregiverDashboard() {
       )}
 
       {notifPermission === "granted" && seniors.length > 0 && (
-        <div className="mx-5 mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <BellRing className="w-3.5 h-3.5" style={{ color: "hsl(var(--status-checked))" }} />
           <span style={{ color: "hsl(var(--status-checked))" }}>Alerts enabled — you'll be notified of missed check-ins</span>
         </div>
       )}
 
-      {/* Alert Banner — demo */}
+      {/* Alert Banner */}
       {alertCount > 0 && (
-        <div className="px-5 mb-4">
-          <AlertBanner
-            alertCount={alertCount}
-            seniorName={demoAlerts[0].name}
-            dueTime={demoAlerts[0].dueTime}
-            overdueText={demoAlerts[0].overdueText}
-            contactNotified={demoAlerts[0].contactNotified}
-            onViewSenior={() => navigate("/seniors/demo-alert-1/alert")}
-            onHandleThis={() => {
-              const id = demoAlerts[0].seniorId;
-              setResolvedAlerts(prev => new Set(prev).add(id));
-              const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
-              if (!existing.includes(id)) {
-                existing.push(id);
-                sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
-              }
-            }}
-          />
-        </div>
+        <AlertBanner
+          alertCount={alertCount}
+          seniorName={demoAlerts[0].name}
+          dueTime={demoAlerts[0].dueTime}
+          overdueText={demoAlerts[0].overdueText}
+          contactNotified={demoAlerts[0].contactNotified}
+          onViewSenior={() => navigate("/seniors/demo-alert-1/alert")}
+          onHandleThis={() => {
+            const id = demoAlerts[0].seniorId;
+            setResolvedAlerts(prev => new Set(prev).add(id));
+            const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+            if (!existing.includes(id)) {
+              existing.push(id);
+              sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
+            }
+          }}
+        />
       )}
 
       {/* Connection success toast */}
       {connectSuccess && (
-        <div className="mx-5 mb-4 bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3 animate-bounce-in">
+        <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3 animate-bounce-in">
           <span className="text-2xl">🎉</span>
           <div>
             <p className="font-black text-sm">Connected!</p>
@@ -305,9 +246,9 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
-      {/* Summary row */}
+      {/* Status summary */}
       {(seniors.length > 0 || alertCount > 0) && (
-        <div className="px-5 mb-5">
+        <div>
           {statusFilter && (
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-bold text-muted-foreground">
@@ -327,10 +268,7 @@ export default function CaregiverDashboard() {
               onClick={() => setStatusFilter(statusFilter === "total" ? null : "total")}
               className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "total" ? "ring-2 ring-primary" : "border-border"}`}
             >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "hsl(var(--muted))" }}
-              >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--muted))" }}>
                 <Users className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
@@ -343,16 +281,11 @@ export default function CaregiverDashboard() {
               onClick={() => setStatusFilter(statusFilter === "safe" ? null : "safe")}
               className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "safe" ? "ring-2 ring-primary" : "border-border"}`}
             >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "hsl(var(--status-checked) / 0.12)" }}
-              >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-checked) / 0.12)" }}>
                 <CheckCircle className="w-6 h-6" style={{ color: "hsl(var(--status-checked))" }} />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-checked))" }}>
-                  {checkedCount}
-                </p>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-checked))" }}>{checkedCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">✓ Safe</p>
               </div>
             </button>
@@ -361,16 +294,11 @@ export default function CaregiverDashboard() {
               onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
               className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "pending" ? "ring-2 ring-primary" : "border-border"}`}
             >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "hsl(var(--status-pending) / 0.12)" }}
-              >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-pending) / 0.12)" }}>
                 <XCircle className="w-6 h-6" style={{ color: "hsl(var(--status-pending))" }} />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-pending))" }}>
-                  {notCheckedCount}
-                </p>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-pending))" }}>{notCheckedCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">⏳ Pending</p>
               </div>
             </button>
@@ -383,16 +311,11 @@ export default function CaregiverDashboard() {
                 borderColor: statusFilter === "alert" ? undefined : (alertCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))"),
               }}
             >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "hsl(var(--status-alert) / 0.12)" }}
-              >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-alert) / 0.12)" }}>
                 <AlertTriangle className="w-6 h-6" style={{ color: "hsl(var(--status-alert))" }} />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-alert))" }}>
-                  {alertCount}
-                </p>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-alert))" }}>{alertCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">🚨 Alert</p>
               </div>
             </button>
@@ -402,23 +325,21 @@ export default function CaregiverDashboard() {
 
       {/* Alert senior rows */}
       {alertCount > 0 && (
-        <div className="px-5 mb-3">
-          <div className="space-y-3">
-            {demoAlerts.map((alert) => (
-              <AlertSeniorRow
-                key={alert.seniorId}
-                name={alert.name}
-                alertTime={alert.alertTime}
-                contactNotified={alert.contactNotified}
-                onClick={() => navigate(`/seniors/${alert.seniorId}/alert`)}
-              />
-            ))}
-          </div>
+        <div className="space-y-3">
+          {demoAlerts.map((alert) => (
+            <AlertSeniorRow
+              key={alert.seniorId}
+              name={alert.name}
+              alertTime={alert.alertTime}
+              contactNotified={alert.contactNotified}
+              onClick={() => navigate(`/seniors/${alert.seniorId}/alert`)}
+            />
+          ))}
         </div>
       )}
 
       {/* Seniors list */}
-      <div className="px-5">
+      <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-black text-lg">Your Seniors</h2>
           <Button
@@ -430,31 +351,22 @@ export default function CaregiverDashboard() {
           </Button>
         </div>
         {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="text-muted-foreground animate-pulse text-lg font-semibold">Loading…</div>
-          </div>
+          <SeniorListSkeleton />
         ) : seniors.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center gap-4">
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ background: "hsl(var(--secondary))" }}
-            >
-              <Users className="w-8 h-8" style={{ color: "hsl(var(--primary))" }} />
-            </div>
-            <div>
-              <p className="font-black text-xl">No loved ones added yet</p>
-              <p className="text-muted-foreground text-sm mt-1">
-                Ask them to open the app and share their invite code
-              </p>
-            </div>
-          </div>
+          <EmptyState
+            icon={Users}
+            title="No loved ones added yet"
+            description="Ask them to open the app and share their invite code"
+            actionLabel="Add Senior"
+            onAction={() => navigate("/seniors/new")}
+          />
         ) : (
           <div className="space-y-3">
             {seniors.filter((s) => {
               if (!statusFilter || statusFilter === "total") return true;
               if (statusFilter === "safe") return s.status === "checked";
               if (statusFilter === "pending") return s.status === "not-checked";
-              if (statusFilter === "alert") return false; // alerts are shown in the alert section above
+              if (statusFilter === "alert") return false;
               return true;
             }).map((senior) => (
               <div
@@ -462,29 +374,19 @@ export default function CaregiverDashboard() {
                 className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-transform"
                 onClick={() => navigate(`/seniors/${senior.senior_id}`)}
                 style={{
-                  borderColor:
-                    senior.status === "checked"
-                      ? "hsl(var(--status-checked) / 0.3)"
-                      : "hsl(var(--border))",
+                  borderColor: senior.status === "checked" ? "hsl(var(--status-checked) / 0.3)" : "hsl(var(--border))",
                 }}
               >
                 <div className="flex items-center gap-4">
                   <div
                     className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shrink-0"
                     style={{
-                      background:
-                        senior.status === "checked"
-                          ? "hsl(var(--status-checked) / 0.12)"
-                          : "hsl(var(--muted))",
-                      color:
-                        senior.status === "checked"
-                          ? "hsl(var(--status-checked))"
-                          : "hsl(var(--muted-foreground))",
+                      background: senior.status === "checked" ? "hsl(var(--status-checked) / 0.12)" : "hsl(var(--muted))",
+                      color: senior.status === "checked" ? "hsl(var(--status-checked))" : "hsl(var(--muted-foreground))",
                     }}
                   >
                     {senior.full_name.charAt(0).toUpperCase()}
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <p className="font-black text-lg leading-tight truncate">{senior.full_name}</p>
                     {senior.status === "checked" && senior.last_check_in ? (
@@ -495,23 +397,19 @@ export default function CaregiverDashboard() {
                         </p>
                       </div>
                     ) : senior.is_managed ? (
-                      <p className="text-sm mt-0.5 text-muted-foreground">
-                        Managed profile — not yet linked
-                      </p>
+                      <p className="text-sm mt-0.5 text-muted-foreground">Managed profile — not yet linked</p>
                     ) : (
                       <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-pending))" }}>
                         Has <strong>not</strong> checked in yet today
                       </p>
                     )}
                   </div>
-
-                   <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {senior.is_managed && (
                       <button
                         onClick={(e) => { e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
                         className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                        aria-label={`Contacts & Escalation for ${senior.full_name}`}
-                        title="Contacts & Escalation"
+                        aria-label={`Contacts for ${senior.full_name}`}
                       >
                         <PhoneCall className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
@@ -523,25 +421,9 @@ export default function CaregiverDashboard() {
                     >
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
-                    <div
-                      className="px-3 py-1.5 rounded-full text-xs font-black"
-                      style={{
-                        background:
-                          senior.status === "checked"
-                            ? "hsl(var(--status-checked) / 0.12)"
-                            : senior.is_managed
-                            ? "hsl(var(--muted))"
-                            : "hsl(var(--status-pending) / 0.12)",
-                        color:
-                          senior.status === "checked"
-                            ? "hsl(var(--status-checked))"
-                            : senior.is_managed
-                            ? "hsl(var(--muted-foreground))"
-                            : "hsl(var(--status-pending))",
-                      }}
-                    >
-                      {senior.status === "checked" ? "✓ Safe" : senior.is_managed ? "📋 Managed" : "⏳ Pending"}
-                    </div>
+                    <StatusBadge
+                      status={senior.status === "checked" ? "safe" : senior.is_managed ? "paused" : "pending"}
+                    />
                     {!senior.is_managed && (
                       <DisconnectSeniorDialog
                         seniorName={senior.full_name}
@@ -557,29 +439,8 @@ export default function CaregiverDashboard() {
         )}
       </div>
 
-      {/* Reports link */}
-      <div className="px-5 mt-4">
-        <button
-          onClick={() => navigate("/reports")}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card active:scale-[0.98] transition-transform"
-        >
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "hsl(var(--primary) / 0.12)" }}
-          >
-            <BarChart3 className="w-6 h-6" style={{ color: "hsl(var(--primary))" }} />
-          </div>
-          <div className="text-left">
-            <p className="font-bold text-base">Weekly Reports</p>
-            <p className="text-muted-foreground text-sm">Analytics &amp; trends</p>
-          </div>
-          <span className="ml-auto text-muted-foreground text-lg">›</span>
-        </button>
-      </div>
-
       {/* Add loved one — invite code entry */}
-      <div className="px-5 pb-10 mt-5">
-        {/* Always-visible code entry card when no seniors, otherwise toggled */}
+      <div className="pb-4">
         {seniors.length === 0 && !loading ? (
           <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
             <p className="font-black text-base mb-1">Enter Invite Code</p>
@@ -589,19 +450,14 @@ export default function CaregiverDashboard() {
             <Input
               placeholder="e.g. PARK-7291"
               value={inviteCode}
-              onChange={(e) => {
-                setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""));
-                setConnectError("");
-              }}
+              onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")); setConnectError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()}
               className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3"
               maxLength={9}
               autoCapitalize="characters"
             />
             {connectError && (
-              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">
-                {connectError}
-              </div>
+              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">{connectError}</div>
             )}
             <Button
               onClick={handleConnectWithCode}
@@ -622,7 +478,6 @@ export default function CaregiverDashboard() {
               <Plus className="w-5 h-5 mr-2" />
               Add Another Loved One
             </Button>
-
             {showSearch && (
               <div className="mt-3 bg-card rounded-2xl p-5 border border-border shadow-card animate-bounce-in">
                 <p className="font-black text-base mb-1">Enter Invite Code</p>
@@ -632,19 +487,14 @@ export default function CaregiverDashboard() {
                 <Input
                   placeholder="e.g. PARK-7291"
                   value={inviteCode}
-                  onChange={(e) => {
-                    setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""));
-                    setConnectError("");
-                  }}
+                  onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")); setConnectError(""); }}
                   onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()}
                   className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3"
                   maxLength={9}
                   autoCapitalize="characters"
                 />
                 {connectError && (
-                  <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">
-                    {connectError}
-                  </div>
+                  <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">{connectError}</div>
                 )}
                 <Button
                   onClick={handleConnectWithCode}
@@ -660,8 +510,6 @@ export default function CaregiverDashboard() {
         )}
       </div>
 
-      </div>{/* end max-w container */}
-
       {showActivity && user && (
         <ActivityPanel
           caregiverId={user.id}
@@ -669,7 +517,6 @@ export default function CaregiverDashboard() {
           onClose={() => setShowActivity(false)}
         />
       )}
-
       {historyTarget && (
         <CheckInHistoryPanel
           seniorId={historyTarget.seniorId}
