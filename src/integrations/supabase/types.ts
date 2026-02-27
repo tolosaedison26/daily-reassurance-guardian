@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      caregiver_notes: {
+        Row: {
+          caregiver_id: string
+          created_at: string
+          id: string
+          managed_senior_id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          caregiver_id: string
+          created_at?: string
+          id?: string
+          managed_senior_id: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          caregiver_id?: string
+          created_at?: string
+          id?: string
+          managed_senior_id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caregiver_notes_managed_senior_id_fkey"
+            columns: ["managed_senior_id"]
+            isOneToOne: false
+            referencedRelation: "managed_seniors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_check_ins: {
         Row: {
           check_date: string

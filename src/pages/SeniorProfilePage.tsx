@@ -110,7 +110,7 @@ export default function SeniorProfilePage() {
               avgResponseMin={4}
             />
             <SeniorMoodTrendsCard />
-            <CaregiverNotes firstName={senior.first_name} />
+            <CaregiverNotes firstName={senior.first_name} managedSeniorId={seniorId} />
             <ProfileSettingsSummary
               seniorId={seniorId}
               schedule={schedule}
