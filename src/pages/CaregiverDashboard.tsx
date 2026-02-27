@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle, BarChart3, Pencil } from "lucide-react";
+import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle, BarChart3, Pencil, PhoneCall } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
 import CheckInHistoryPanel from "@/components/CheckInHistoryPanel";
@@ -465,6 +465,16 @@ export default function CaregiverDashboard() {
                   </div>
 
                    <div className="flex items-center gap-1.5 shrink-0">
+                    {senior.is_managed && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
+                        className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                        aria-label={`Contacts & Escalation for ${senior.full_name}`}
+                        title="Contacts & Escalation"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/edit`); }}
                       className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"

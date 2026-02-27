@@ -167,6 +167,9 @@ export type Database = {
           created_at: string
           custom_days: string[] | null
           date_of_birth: string | null
+          escalation_911_enabled: boolean
+          escalation_delay_minutes: number
+          escalation_loop_enabled: boolean
           first_name: string
           frequency: string
           grace_period_minutes: number
@@ -175,6 +178,9 @@ export type Database = {
           mood_check_enabled: boolean
           notes: string | null
           phone: string | null
+          quiet_hours_enabled: boolean
+          quiet_hours_from: string
+          quiet_hours_until: string
           relationship: string | null
           reminder_hour: string
           reminder_minute: string
@@ -191,6 +197,9 @@ export type Database = {
           created_at?: string
           custom_days?: string[] | null
           date_of_birth?: string | null
+          escalation_911_enabled?: boolean
+          escalation_delay_minutes?: number
+          escalation_loop_enabled?: boolean
           first_name: string
           frequency?: string
           grace_period_minutes?: number
@@ -199,6 +208,9 @@ export type Database = {
           mood_check_enabled?: boolean
           notes?: string | null
           phone?: string | null
+          quiet_hours_enabled?: boolean
+          quiet_hours_from?: string
+          quiet_hours_until?: string
           relationship?: string | null
           reminder_hour?: string
           reminder_minute?: string
@@ -215,6 +227,9 @@ export type Database = {
           created_at?: string
           custom_days?: string[] | null
           date_of_birth?: string | null
+          escalation_911_enabled?: boolean
+          escalation_delay_minutes?: number
+          escalation_loop_enabled?: boolean
           first_name?: string
           frequency?: string
           grace_period_minutes?: number
@@ -223,6 +238,9 @@ export type Database = {
           mood_check_enabled?: boolean
           notes?: string | null
           phone?: string | null
+          quiet_hours_enabled?: boolean
+          quiet_hours_from?: string
+          quiet_hours_until?: string
           relationship?: string | null
           reminder_hour?: string
           reminder_minute?: string
