@@ -74,7 +74,7 @@ export default function InviteCodeCard({ seniorId }: InviteCodeCardProps) {
   if (loading) return null;
 
   return (
-    <div className="w-full bg-card rounded-2xl p-5 border border-border shadow-card">
+    <div className="w-full bg-card rounded-2xl p-4 border border-border shadow-card">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg">👨‍👩‍👧</span>
         <p className="font-black text-base">Connect Family</p>
@@ -92,7 +92,7 @@ export default function InviteCodeCard({ seniorId }: InviteCodeCardProps) {
             style={{ background: "hsl(var(--secondary))" }}
           >
             <span
-              className="text-3xl font-black tracking-widest"
+              className="text-2xl font-black tracking-widest"
               style={{ color: "hsl(var(--primary))", letterSpacing: "0.12em" }}
             >
               {code}

@@ -84,9 +84,9 @@ export default function SeniorHome() {
   const isPending = status === "pending";
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background max-w-3xl mx-auto w-full">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-10 pb-2">
+      <div className="flex items-center justify-between px-5 pt-10 pb-4">
         {/* Brand */}
         <div className="flex items-center gap-2">
           <span className="text-2xl">☀️</span>
@@ -120,7 +120,7 @@ export default function SeniorHome() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center px-5 pt-6 pb-6 gap-6">
+      <div className="flex-1 flex flex-col items-center px-5 pt-6 pb-10 gap-4">
 
         {/* Greeting */}
         <div className="w-full text-center">
@@ -150,8 +150,8 @@ export default function SeniorHome() {
         >
           {isChecked ? (
             <>
-              <p className="text-5xl mb-3">✅</p>
-              <p className="text-xl font-black" style={{ color: "hsl(var(--status-checked))" }}>
+              <p className="text-3xl mb-3">✅</p>
+              <p className="text-lg font-black" style={{ color: "hsl(var(--status-checked))" }}>
                 You're all checked in!
               </p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -160,8 +160,8 @@ export default function SeniorHome() {
             </>
           ) : isPending ? (
             <>
-              <p className="text-5xl mb-3">⏰</p>
-              <p className="text-xl font-black text-foreground">
+              <p className="text-3xl mb-3">⏰</p>
+              <p className="text-lg font-black text-foreground">
                 Time to check in!
               </p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -174,8 +174,8 @@ export default function SeniorHome() {
             </>
           ) : (
             <>
-              <p className="text-5xl mb-3">🌅</p>
-              <p className="text-xl font-black text-foreground">Good morning!</p>
+              <p className="text-3xl mb-3">🌅</p>
+              <p className="text-lg font-black text-foreground">Good morning!</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Your daily check-in reminder is at {reminderTime}
               </p>
@@ -199,7 +199,7 @@ export default function SeniorHome() {
           <Button
             onClick={handleCheckIn}
             disabled={loading}
-            className="w-full h-20 text-2xl font-black rounded-2xl border-0 shadow-btn animate-float"
+            className="w-full h-14 text-lg font-black rounded-2xl border-0 shadow-btn animate-float"
             style={{
               background: "hsl(var(--status-checked))",
               color: "#fff",
@@ -231,10 +231,10 @@ export default function SeniorHome() {
           }}
         >
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "hsl(0 70% 50%)" }}
           >
-            <Phone className="w-6 h-6 text-white" />
+            <Phone className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
             <p className="font-bold text-base" style={{ color: "hsl(0 70% 50%)" }}>Emergency 911</p>
@@ -252,10 +252,10 @@ export default function SeniorHome() {
           className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card"
         >
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "hsl(var(--accent))" }}
           >
-            <Music className="w-6 h-6" style={{ color: "hsl(var(--accent-foreground))" }} />
+            <Music className="w-5 h-5" style={{ color: "hsl(var(--accent-foreground))" }} />
           </div>
           <div className="text-left">
             <p className="font-bold text-base">Calm Sounds</p>
