@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, User, Mail, Lock, Moon, Bell, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function AccountSettingsPage({ onBack }: { onBack: () => void }) {
@@ -24,6 +24,8 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Notifications
   const [notifEnabled, setNotifEnabled] = useState(true);
@@ -34,6 +36,8 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
     setNameSaving(true);
     const { error } = await supabase.from("profiles").update({ full_name: trimmed }).eq("user_id", user.id);
     if (!error) {
+      // Also update auth metadata so it's consistent
+      await supabase.auth.updateUser({ data: { full_name: trimmed } });
       await refreshProfile();
       toast({ title: "Name updated", description: "Your display name has been saved." });
     } else {
@@ -75,6 +79,8 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
       setNewPassword("");
       setConfirmPassword("");
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
     } else {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -146,28 +152,48 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
             <Lock className="w-4 h-4 text-primary" />
             <h2 className="font-bold text-base">Change Password</h2>
           </div>
-          <Input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="h-12 rounded-xl text-base"
-            placeholder="New password (min 6 chars)"
-            maxLength={128}
-          />
-          <Input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="h-12 rounded-xl text-base"
-            placeholder="Confirm new password"
-            maxLength={128}
-          />
+          <div className="relative">
+            <Input
+              type={showNewPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="h-12 rounded-xl text-base pr-12"
+              placeholder="New password (min 6 chars)"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showNewPassword ? "Hide password" : "Show password"}
+            >
+              {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          <div className="relative">
+            <Input
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="h-12 rounded-xl text-base pr-12"
+              placeholder="Confirm new password"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            >
+              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
           <Button
             onClick={handleSavePassword}
             disabled={passwordSaving || !newPassword || !confirmPassword}
             className="w-full h-12 rounded-xl font-bold"
           >
-            {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Password"}
+            {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change Password"}
           </Button>
         </div>
 
