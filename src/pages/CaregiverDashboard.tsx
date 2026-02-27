@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle, BarChart3, Pencil, PhoneCall } from "lucide-react";
+import { LogOut, CheckCircle, XCircle, Clock, Users, Bell, Plus, BellRing, AlertTriangle, BarChart3, Pencil, PhoneCall, Settings } from "lucide-react";
 import ActivityPanel from "@/components/ActivityPanel";
 import DisconnectSeniorDialog from "@/components/DisconnectSeniorDialog";
 import CheckInHistoryPanel from "@/components/CheckInHistoryPanel";
 import AlertBanner from "@/components/AlertBanner";
 import AlertSeniorRow from "@/components/AlertSeniorRow";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import AccountSettingsPage from "@/pages/AccountSettingsPage";
 
 interface SeniorStatus {
   connection_id: string;
@@ -33,6 +34,7 @@ export default function CaregiverDashboard() {
   const [showSearch, setShowSearch] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [historyTarget, setHistoryTarget] = useState<{ seniorId: string; name: string } | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
@@ -179,6 +181,8 @@ export default function CaregiverDashboard() {
   const demoAlerts = allDemoAlerts.filter(a => !resolvedAlerts.has(a.seniorId));
   const alertCount = demoAlerts.length;
 
+  if (showAccountSettings) return <AccountSettingsPage onBack={() => setShowAccountSettings(false)} />;
+
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
       <div className="w-full max-w-3xl mx-auto">
@@ -203,6 +207,13 @@ export default function CaregiverDashboard() {
                 style={{ background: "hsl(var(--primary))" }}
               />
             )}
+          </button>
+          <button
+            onClick={() => setShowAccountSettings(true)}
+            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+            aria-label="Account Settings"
+          >
+            <Settings className="w-5 h-5 text-muted-foreground" />
           </button>
           <button
             onClick={signOut}
