@@ -1,10 +1,12 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { Navigate, useLocation } from "react-router-dom";
 import AuthPage from "@/pages/AuthPage";
 import SeniorHome from "@/pages/SeniorHome";
-import CaregiverDashboard from "@/pages/CaregiverDashboard";
+import LandingPage from "@/pages/LandingPage";
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -20,13 +22,18 @@ export default function Index() {
     );
   }
 
-  if (!user || !profile) {
-    return <AuthPage />;
+  // If logged in, route to the right dashboard
+  if (user && profile) {
+    if (profile.role === "caregiver") {
+      return <Navigate to="/dashboard" replace />;
+    }
+    // Senior stays on / with their own home
+    return <SeniorHome />;
   }
 
-  if (profile.role === "caregiver") {
-    return <CaregiverDashboard />;
-  }
-
-  return <SeniorHome />;
+  // Not logged in: show landing page
+  return <LandingPage 
+    onGetStarted={() => window.location.href = "/register"} 
+    onSignIn={() => window.location.href = "/login"} 
+  />;
 }

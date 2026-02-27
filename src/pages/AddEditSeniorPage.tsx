@@ -1,16 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,12 +32,9 @@ export default function AddEditSeniorPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Unsaved changes warning via beforeunload
   useEffect(() => {
     if (!dirty || saving) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty, saving]);
@@ -57,24 +44,19 @@ export default function AddEditSeniorPage() {
     setDirty(true);
   }, []);
 
-  // Validation helpers
   const validateStep1 = (): Record<string, string> => {
     const e: Record<string, string> = {};
     if (!data.firstName.trim()) e.firstName = "First name is required";
     if (!data.lastName.trim()) e.lastName = "Last name is required";
     if (!data.phone.trim()) e.phone = "Phone number is required";
-    else if (!/^\+?\d[\d\s\-()]{7,}$/.test(data.phone.trim()))
-      e.phone = "Please enter a valid phone number with country code (e.g. +1 555 000 0000)";
+    else if (!/^\+?\d[\d\s\-()]{7,}$/.test(data.phone.trim())) e.phone = "Please enter a valid phone number";
     if (!data.relationship) e.relationship = "Please select a relationship";
     return e;
   };
 
   const validateStep3 = (): Record<string, string> => {
     const e: Record<string, string> = {};
-    if (data.contacts.length === 0) {
-      e.contacts = "At least one emergency contact is required";
-      return e;
-    }
+    if (data.contacts.length === 0) { e.contacts = "At least one emergency contact is required"; return e; }
     data.contacts.forEach((c, i) => {
       const ce: Record<string, string> = {};
       if (!c.name.trim()) ce.name = "Name is required";
@@ -99,67 +81,33 @@ export default function AddEditSeniorPage() {
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSave = async () => {
-    if (!user) {
-      toast({ title: "You must be logged in to save.", variant: "destructive" });
-      return;
-    }
+    if (!user) { toast({ title: "You must be logged in to save.", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      // Insert managed senior
       const { data: senior, error: seniorError } = await supabase
         .from("managed_seniors" as any)
         .insert({
-          caregiver_id: user.id,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          phone: data.phone || null,
-          relationship: data.relationship || null,
-          date_of_birth: data.dateOfBirth || null,
-          notes: data.notes || null,
-          reminder_hour: data.reminderHour,
-          reminder_minute: data.reminderMinute,
-          reminder_period: data.reminderPeriod,
-          timezone: data.timezone,
-          grace_period_minutes: data.gracePeriodMinutes,
-          frequency: data.frequency,
-          custom_days: data.customDays,
-          mood_check_enabled: data.moodCheckEnabled,
-          vacation_mode: data.vacationMode,
-          vacation_from: data.vacationFrom || null,
-          vacation_until: data.vacationUntil || null,
+          caregiver_id: user.id, first_name: data.firstName, last_name: data.lastName,
+          phone: data.phone || null, relationship: data.relationship || null, date_of_birth: data.dateOfBirth || null,
+          notes: data.notes || null, reminder_hour: data.reminderHour, reminder_minute: data.reminderMinute,
+          reminder_period: data.reminderPeriod, timezone: data.timezone, grace_period_minutes: data.gracePeriodMinutes,
+          frequency: data.frequency, custom_days: data.customDays, mood_check_enabled: data.moodCheckEnabled,
+          vacation_mode: data.vacationMode, vacation_from: data.vacationFrom || null, vacation_until: data.vacationUntil || null,
         } as any)
-        .select()
-        .single();
-
+        .select().single();
       if (seniorError) throw seniorError;
-
-      // Insert emergency contacts
       if (data.contacts.length > 0 && senior) {
         const contactRows = data.contacts.map((c, i) => ({
-          managed_senior_id: (senior as any).id,
-          name: c.name,
-          relationship: c.relationship || null,
-          phone: c.phone || null,
-          email: c.email || null,
-          notify_via_sms: c.notifyViaSms,
-          notify_via_email: c.notifyViaEmail,
-          delay_minutes: c.delayMinutes,
-          sort_order: i,
+          managed_senior_id: (senior as any).id, name: c.name, relationship: c.relationship || null,
+          phone: c.phone || null, email: c.email || null, notify_via_sms: c.notifyViaSms,
+          notify_via_email: c.notifyViaEmail, delay_minutes: c.delayMinutes, sort_order: i,
         }));
-        const { error: contactError } = await supabase
-          .from("managed_senior_contacts" as any)
-          .insert(contactRows as any);
+        const { error: contactError } = await supabase.from("managed_senior_contacts" as any).insert(contactRows as any);
         if (contactError) throw contactError;
       }
-
       setDirty(false);
-      toast({
-        title: isEdit ? "Changes saved successfully." : `${data.firstName} ${data.lastName} has been added.`,
-        description: isEdit
-          ? undefined
-          : `First check-in tomorrow at ${data.reminderHour}:${data.reminderMinute} ${data.reminderPeriod}.`,
-      });
-      navigate("/");
+      toast({ title: isEdit ? "Changes saved successfully." : `${data.firstName} ${data.lastName} has been added.` });
+      navigate("/dashboard");
     } catch (err: any) {
       console.error("Save error:", err);
       toast({ title: "Failed to save", description: err.message, variant: "destructive" });
@@ -169,61 +117,26 @@ export default function AddEditSeniorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-12">
-      {/* Header */}
-      <div className="w-full max-w-[680px] mx-auto px-4 pt-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
-        >
-          <ChevronLeft className="w-4 h-4" /> {isEdit ? "Back" : "Dashboard"}
-        </button>
-        <h1 className="text-2xl font-black">
-          {isEdit ? `Editing: ${data.firstName} ${data.lastName}` : "Add Senior"}
-        </h1>
-      </div>
+    <div className="space-y-4">
+      {/* Breadcrumb */}
+      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="w-4 h-4" /> {isEdit ? "Back" : "Dashboard"}
+      </button>
 
-      {/* Stepper */}
-      <div className="w-full max-w-[680px] mx-auto px-4">
-        <WizardStepper
-          currentStep={step}
-          completedSteps={completedSteps}
-          onStepClick={(s) => setStep(s)}
-          allowJump={isEdit}
-        />
-      </div>
+      <WizardStepper currentStep={step} completedSteps={completedSteps} onStepClick={(s) => setStep(s)} allowJump={isEdit} />
 
-      {/* Card */}
-      <div className="w-full max-w-[680px] mx-auto px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">{STEP_TITLES[step].title}</CardTitle>
-            <CardDescription>{STEP_TITLES[step].desc}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {step === 0 && (
-              <BasicInfoStep data={data} onChange={onChange} onNext={goNext} errors={errors} />
-            )}
-            {step === 1 && (
-              <ScheduleStep data={data} onChange={onChange} onNext={goNext} onBack={goBack} />
-            )}
-            {step === 2 && (
-              <ContactsStep data={data} onChange={onChange} onNext={goNext} onBack={goBack} errors={errors} />
-            )}
-            {step === 3 && (
-              <ReviewStep
-                data={data}
-                isEdit={isEdit}
-                saving={saving}
-                onSave={handleSave}
-                onBack={goBack}
-                onJumpToStep={(s) => setStep(s)}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">{STEP_TITLES[step].title}</CardTitle>
+          <CardDescription>{STEP_TITLES[step].desc}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {step === 0 && <BasicInfoStep data={data} onChange={onChange} onNext={goNext} errors={errors} />}
+          {step === 1 && <ScheduleStep data={data} onChange={onChange} onNext={goNext} onBack={goBack} />}
+          {step === 2 && <ContactsStep data={data} onChange={onChange} onNext={goNext} onBack={goBack} errors={errors} />}
+          {step === 3 && <ReviewStep data={data} isEdit={isEdit} saving={saving} onSave={handleSave} onBack={goBack} onJumpToStep={(s) => setStep(s)} />}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,18 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Heart, Loader2 } from "lucide-react";
-import { createUserProfile } from "@/lib/supabase-helpers";
+import { useAuth } from "@/contexts/AuthContext";
 import LandingPage from "./LandingPage";
 
 type Mode = "login" | "signup" | "forgot";
 type Role = "senior" | "caregiver";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<Mode>("login");
-  const [showAuth, setShowAuth] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
+
+  // Determine initial mode from route
+  const getInitialMode = (): Mode => {
+    if (location.pathname === "/register") return "signup";
+    if (location.pathname === "/forgot-password") return "forgot";
+    return "login";
+  };
+
+  const [mode, setMode] = useState<Mode>(getInitialMode());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -20,6 +31,19 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user && profile) {
+      const from = (location.state as any)?.from || "/dashboard";
+      navigate(from, { replace: true });
+    }
+  }, [authLoading, user, profile, navigate, location.state]);
+
+  // Sync mode with route
+  useEffect(() => {
+    setMode(getInitialMode());
+  }, [location.pathname]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,20 +86,17 @@ export default function AuthPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
+      // Auth state change will trigger redirect
     }
 
     setLoading(false);
   };
 
-  if (!showAuth) {
-    return <LandingPage onGetStarted={() => { setMode("signup"); setShowAuth(true); }} onSignIn={() => { setMode("login"); setShowAuth(true); }} />;
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Back to landing */}
       <div className="px-5 pt-6">
-        <button onClick={() => setShowAuth(false)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
           ← Back
         </button>
       </div>
@@ -150,7 +171,7 @@ export default function AuthPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Your full name"
                   required
-                  className="mt-1 h-13 h-12 text-base rounded-xl"
+                  className="mt-1 h-12 text-base rounded-xl"
                 />
               </div>
             )}
@@ -186,7 +207,7 @@ export default function AuthPage() {
               <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }}
+                  onClick={() => navigate("/forgot-password")}
                   className="text-primary text-sm font-semibold hover:underline underline-offset-4"
                 >
                   Forgot password?
@@ -219,7 +240,7 @@ export default function AuthPage() {
             {mode === "forgot" ? (
               <button
                 type="button"
-                onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+                onClick={() => navigate("/login")}
                 className="text-primary font-bold text-sm underline-offset-4 hover:underline"
               >
                 ← Back to Sign In
@@ -227,11 +248,7 @@ export default function AuthPage() {
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  setMode(mode === "login" ? "signup" : "login");
-                  setError("");
-                  setSuccess("");
-                }}
+                onClick={() => navigate(mode === "login" ? "/register" : "/login")}
                 className="text-primary font-bold text-sm underline-offset-4 hover:underline"
               >
                 {mode === "login"
