@@ -17,8 +17,9 @@ interface SeniorStatus {
   connection_id: string;
   senior_id: string;
   full_name: string;
-  status: "checked" | "not-checked";
+  status: "checked" | "not-checked" | "managed";
   last_check_in: string | null;
+  is_managed?: boolean;
 }
 
 export default function CaregiverDashboard() {
@@ -66,27 +67,44 @@ export default function CaregiverDashboard() {
   const loadSeniors = async () => {
     if (!user) return;
     setLoading(true);
+
+    // Load connected seniors (via invite code)
     const { data: connections } = await getConnectedSeniors(user.id);
-    if (!connections) { setLoading(false); return; }
+    const connectedStatuses: SeniorStatus[] = connections
+      ? await Promise.all(
+          connections.map(async (conn: any) => {
+            const checkIn = await getSeniorCheckInStatus(conn.senior_id);
+            const p = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
+            return {
+              connection_id: conn.id,
+              senior_id: conn.senior_id,
+              full_name: p?.full_name || "Unknown",
+              status: checkIn ? ("checked" as const) : ("not-checked" as const),
+              last_check_in: checkIn
+                ? new Date(checkIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : null,
+            };
+          })
+        )
+      : [];
 
-    const seniorStatuses: SeniorStatus[] = await Promise.all(
-      connections.map(async (conn: any) => {
-        const checkIn = await getSeniorCheckInStatus(conn.senior_id);
-        // profiles can be returned as object or array depending on join type
-        const p = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
-        return {
-          connection_id: conn.id,
-          senior_id: conn.senior_id,
-          full_name: p?.full_name || "Unknown",
-          status: checkIn ? "checked" : "not-checked",
-          last_check_in: checkIn
-            ? new Date(checkIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : null,
-        };
-      })
-    );
+    // Load managed seniors (added via wizard)
+    const { data: managed } = await supabase
+      .from("managed_seniors" as any)
+      .select("*")
+      .eq("caregiver_id", user.id)
+      .order("created_at", { ascending: false });
 
-    setSeniors(seniorStatuses);
+    const managedStatuses: SeniorStatus[] = (managed || []).map((ms: any) => ({
+      connection_id: ms.id,
+      senior_id: ms.id,
+      full_name: `${ms.first_name} ${ms.last_name}`,
+      status: "managed" as const,
+      last_check_in: null,
+      is_managed: true,
+    }));
+
+    setSeniors([...connectedStatuses, ...managedStatuses]);
     setLoading(false);
   };
 
@@ -128,6 +146,7 @@ export default function CaregiverDashboard() {
 
   const checkedCount = seniors.filter((s) => s.status === "checked").length;
   const notCheckedCount = seniors.filter((s) => s.status === "not-checked").length;
+  const managedCount = seniors.filter((s) => s.is_managed).length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
   // Demo alert data — shows alert state by default for demo purposes
@@ -434,6 +453,10 @@ export default function CaregiverDashboard() {
                           Checked in at {senior.last_check_in}
                         </p>
                       </div>
+                    ) : senior.is_managed ? (
+                      <p className="text-sm mt-0.5 text-muted-foreground">
+                        Managed profile — not yet linked
+                      </p>
                     ) : (
                       <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-pending))" }}>
                         Has <strong>not</strong> checked in yet today
@@ -441,7 +464,7 @@ export default function CaregiverDashboard() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/edit`); }}
                       className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
@@ -455,20 +478,26 @@ export default function CaregiverDashboard() {
                         background:
                           senior.status === "checked"
                             ? "hsl(var(--status-checked) / 0.12)"
+                            : senior.is_managed
+                            ? "hsl(var(--muted))"
                             : "hsl(var(--status-pending) / 0.12)",
                         color:
                           senior.status === "checked"
                             ? "hsl(var(--status-checked))"
+                            : senior.is_managed
+                            ? "hsl(var(--muted-foreground))"
                             : "hsl(var(--status-pending))",
                       }}
                     >
-                      {senior.status === "checked" ? "✓ Safe" : "⏳ Pending"}
+                      {senior.status === "checked" ? "✓ Safe" : senior.is_managed ? "📋 Managed" : "⏳ Pending"}
                     </div>
-                    <DisconnectSeniorDialog
-                      seniorName={senior.full_name}
-                      onConfirm={() => handleDisconnect(senior.connection_id)}
-                      disconnecting={disconnecting === senior.connection_id}
-                    />
+                    {!senior.is_managed && (
+                      <DisconnectSeniorDialog
+                        seniorName={senior.full_name}
+                        onConfirm={() => handleDisconnect(senior.connection_id)}
+                        disconnecting={disconnecting === senior.connection_id}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

@@ -12,6 +12,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import WizardStepper from "@/components/wizard/WizardStepper";
 import BasicInfoStep from "@/components/wizard/BasicInfoStep";
 import ScheduleStep from "@/components/wizard/ScheduleStep";
@@ -31,6 +33,7 @@ export default function AddEditSeniorPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState<SeniorFormData>(isEdit ? MOCK_SENIOR : defaultFormData);
@@ -96,20 +99,73 @@ export default function AddEditSeniorPage() {
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSave = async () => {
+    if (!user) {
+      toast({ title: "You must be logged in to save.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
-    // Simulate save
-    await new Promise((r) => setTimeout(r, 1200));
-    setSaving(false);
-    setDirty(false);
+    try {
+      // Insert managed senior
+      const { data: senior, error: seniorError } = await supabase
+        .from("managed_seniors" as any)
+        .insert({
+          caregiver_id: user.id,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          phone: data.phone || null,
+          relationship: data.relationship || null,
+          date_of_birth: data.dateOfBirth || null,
+          notes: data.notes || null,
+          reminder_hour: data.reminderHour,
+          reminder_minute: data.reminderMinute,
+          reminder_period: data.reminderPeriod,
+          timezone: data.timezone,
+          grace_period_minutes: data.gracePeriodMinutes,
+          frequency: data.frequency,
+          custom_days: data.customDays,
+          mood_check_enabled: data.moodCheckEnabled,
+          vacation_mode: data.vacationMode,
+          vacation_from: data.vacationFrom || null,
+          vacation_until: data.vacationUntil || null,
+        } as any)
+        .select()
+        .single();
 
-    toast({
-      title: isEdit ? "Changes saved successfully." : `${data.firstName} ${data.lastName} has been added.`,
-      description: isEdit
-        ? undefined
-        : `First check-in tomorrow at ${data.reminderHour}:${data.reminderMinute} ${data.reminderPeriod}.`,
-    });
+      if (seniorError) throw seniorError;
 
-    navigate("/");
+      // Insert emergency contacts
+      if (data.contacts.length > 0 && senior) {
+        const contactRows = data.contacts.map((c, i) => ({
+          managed_senior_id: (senior as any).id,
+          name: c.name,
+          relationship: c.relationship || null,
+          phone: c.phone || null,
+          email: c.email || null,
+          notify_via_sms: c.notifyViaSms,
+          notify_via_email: c.notifyViaEmail,
+          delay_minutes: c.delayMinutes,
+          sort_order: i,
+        }));
+        const { error: contactError } = await supabase
+          .from("managed_senior_contacts" as any)
+          .insert(contactRows as any);
+        if (contactError) throw contactError;
+      }
+
+      setDirty(false);
+      toast({
+        title: isEdit ? "Changes saved successfully." : `${data.firstName} ${data.lastName} has been added.`,
+        description: isEdit
+          ? undefined
+          : `First check-in tomorrow at ${data.reminderHour}:${data.reminderMinute} ${data.reminderPeriod}.`,
+      });
+      navigate("/");
+    } catch (err: any) {
+      console.error("Save error:", err);
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
