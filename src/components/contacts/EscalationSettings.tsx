@@ -3,7 +3,6 @@ import { ChevronDown, AlertTriangle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 
 interface EscalationSettingsProps {
   delayMinutes: number;
@@ -19,6 +18,8 @@ interface EscalationSettingsProps {
   quietUntil: string;
   setQuietUntil: (v: string) => void;
   isMobile: boolean;
+  onSave?: () => void;
+  saving?: boolean;
 }
 
 const delayOptions = [
@@ -29,7 +30,6 @@ const delayOptions = [
 ];
 
 export default function EscalationSettings(props: EscalationSettingsProps) {
-  const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(props.isMobile);
 
   return (
@@ -133,9 +133,10 @@ export default function EscalationSettings(props: EscalationSettingsProps) {
           <div className="flex justify-end">
             <Button
               className="rounded-xl font-black"
-              onClick={() => toast({ title: "Escalation settings updated." })}
+              onClick={props.onSave}
+              disabled={props.saving}
             >
-              Save Escalation Settings
+              {props.saving ? "Saving…" : "Save Escalation Settings"}
             </Button>
           </div>
         </div>
