@@ -212,10 +212,18 @@ export default function AccountSettingsPage({ onBack }: { onBack: () => void }) 
               <Bell className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">Push Notifications</span>
             </div>
-            <Switch
+          <Switch
               checked={notifEnabled}
-              onCheckedChange={(v) => {
+              onCheckedChange={async (v) => {
                 setNotifEnabled(v);
+                if (v && "Notification" in window && Notification.permission === "default") {
+                  const perm = await Notification.requestPermission();
+                  if (perm !== "granted") {
+                    setNotifEnabled(false);
+                    toast({ title: "Notifications blocked", description: "Please enable notifications in your browser settings.", variant: "destructive" });
+                    return;
+                  }
+                }
                 toast({ title: v ? "Notifications enabled" : "Notifications disabled" });
               }}
             />

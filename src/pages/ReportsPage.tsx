@@ -143,7 +143,7 @@ export default function ReportsPage() {
               Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times. Consider a wellness call.
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
-              <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/")}>
+              <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/seniors/demo-dorothy")}>
                 View Dorothy's Profile →
               </Button>
               <Button

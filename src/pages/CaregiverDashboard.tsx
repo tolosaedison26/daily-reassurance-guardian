@@ -454,7 +454,7 @@ export default function CaregiverDashboard() {
               if (!statusFilter || statusFilter === "total") return true;
               if (statusFilter === "safe") return s.status === "checked";
               if (statusFilter === "pending") return s.status === "not-checked";
-              if (statusFilter === "alert") return false; // alerts shown separately
+              if (statusFilter === "alert") return false; // alerts are shown in the alert section above
               return true;
             }).map((senior) => (
               <div

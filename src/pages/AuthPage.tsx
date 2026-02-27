@@ -44,7 +44,7 @@ export default function AuthPage() {
           { user_id: data.user.id, role },
           { onConflict: "user_id,role" }
         );
-        setSuccess("Account created! Please check your email to verify your account.");
+        setSuccess("Account created! You can now sign in.");
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
