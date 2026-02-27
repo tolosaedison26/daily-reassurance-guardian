@@ -146,7 +146,9 @@ export default function EmergencyContacts({ userId }: Props) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleDelete(contact.id);
+              if (window.confirm(`Remove ${contact.name} from emergency contacts?`)) {
+                handleDelete(contact.id);
+              }
             }}
             className="p-2 rounded-full hover:bg-destructive/10 shrink-0"
             aria-label={`Delete ${contact.name}`}

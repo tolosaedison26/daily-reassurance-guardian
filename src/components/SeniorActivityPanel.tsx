@@ -33,7 +33,7 @@ export default function SeniorActivityPanel({ seniorId, onClose }: SeniorActivit
         .eq("senior_id", seniorId)
         .order("checked_in_at", { ascending: false })
         .limit(20),
-      (supabase.from as any)("voice_messages")
+      supabase.from("voice_messages")
         .select("id, audio_path, created_at")
         .eq("senior_id", seniorId)
         .order("created_at", { ascending: false })
