@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, Loader2, MessageSquare } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import WeeklyStatsRow from "@/components/WeeklyStatsRow";
 import CheckinRatesCard from "@/components/CheckinRatesCard";
 import MoodTrendsCard from "@/components/MoodTrendsCard";
 import SeniorSummaryCard from "@/components/SeniorSummaryCard";
+import ComposeMessageModal from "@/components/ComposeMessageModal";
 
 // --- Mock data ---
 function getSeniorRates(offset: number) {
@@ -54,9 +55,13 @@ export default function ReportsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
-  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
-  const [sendingSms, setSendingSms] = useState<string | null>(null);
   const [attentionDismissed, setAttentionDismissed] = useState(false);
+
+  // Compose modal state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeChannel, setComposeChannel] = useState<"email" | "sms">("email");
+  const [composeSenior, setComposeSenior] = useState<typeof seniorSummaries[0] & { email?: string } | null>(null);
+
   const seniorRates = getSeniorRates(weekOffset);
   const overallRate = Math.round(seniorRates.reduce((s, r) => s + r.rate, 0) / seniorRates.length);
   const jitter = Math.abs(weekOffset) % 5;
@@ -64,33 +69,18 @@ export default function ReportsPage() {
   const checkInRate = overallRate;
   const missedCheckIns = Math.max(0, 6 + jitter * 2);
 
-  // Determine if Dorothy needs attention (rate < 50% this week)
   const dorothyRate = seniorRates.find(s => s.name === "Dorothy Wilson")?.rate ?? 0;
   const showAttention = weekOffset === 0 && dorothyRate < 50 && !attentionDismissed;
 
-  const handleSendEmail = async (name: string, email: string) => {
-    setSendingEmail(name);
-    await new Promise(r => setTimeout(r, 1200));
-    setSendingEmail(null);
-    toast({
-      title: "Report Emailed",
-      description: `Weekly report sent to ${name} (${email}).`,
-    });
-  };
-
-  const handleSendSms = async (name: string) => {
-    setSendingSms(name);
-    await new Promise(r => setTimeout(r, 1000));
-    setSendingSms(null);
-    toast({
-      title: "SMS Sent",
-      description: `Weekly report SMS sent to ${name}.`,
-    });
+  const openCompose = (senior: typeof seniorSummaries[0], channel: "email" | "sms") => {
+    const sr = seniorRates.find(r => r.name === senior.name);
+    setComposeSenior({ ...senior, email: sr?.email });
+    setComposeChannel(channel);
+    setComposeOpen(true);
   };
 
   const handleMarkSafeFromReport = () => {
     setAttentionDismissed(true);
-    // Also sync to sessionStorage for cross-page consistency
     const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
     if (!existing.includes("dorothy-attention")) {
       existing.push("dorothy-attention");
@@ -98,6 +88,8 @@ export default function ReportsPage() {
     }
     toast({ title: "Dorothy Wilson marked safe", description: "Attention alert dismissed." });
   };
+
+  const weekLabel = getWeekLabel(weekOffset);
 
   return (
     <div className="min-h-screen bg-background pb-10">
@@ -113,12 +105,12 @@ export default function ReportsPage() {
               <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
                 <ChevronLeft className="w-4 h-4 text-muted-foreground" />
               </button>
-              <span className="text-sm font-semibold px-2 whitespace-nowrap">{getWeekLabel(weekOffset)}</span>
+              <span className="text-sm font-semibold px-2 whitespace-nowrap">{weekLabel}</span>
               <button onClick={() => setWeekOffset(weekOffset + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors" disabled={weekOffset >= 0}>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => toast({ title: "Export Started", description: `Exporting CSV for ${getWeekLabel(weekOffset)}…` })}>
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => toast({ title: "Export Started", description: `Exporting CSV for ${weekLabel}…` })}>
               <Download className="w-4 h-4" /> Export CSV
             </Button>
           </div>
@@ -126,16 +118,13 @@ export default function ReportsPage() {
       </div>
 
       <div className="px-5 space-y-5">
-        {/* Section 1: Stats */}
         <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 && !attentionDismissed ? 1 : 0} />
 
-        {/* Section 2 & 4: Check-in Rates + Mood Trends side by side on desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <CheckinRatesCard seniors={seniorRates} overallRate={overallRate} lastWeekRate={overallRate - 3} seniorCount={4} />
           <MoodTrendsCard seniors={moodData} />
         </div>
 
-        {/* Section 3: Attention Needed — synced with safe status */}
         {showAttention && (
           <div
             className="rounded-2xl p-5 border shadow-card"
@@ -170,50 +159,37 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* Section 5: Individual Senior Summaries with Send Email */}
+        {/* Senior Summaries */}
         <div>
           <h3 className="text-lg font-black mb-3">Senior Summaries</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {seniorSummaries.map((s) => {
-              const sr = seniorRates.find(r => r.name === s.name);
-              return (
-                <div key={s.name} className="space-y-2">
-                  <SeniorSummaryCard {...s} />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl font-bold text-xs gap-1.5"
-                      disabled={sendingEmail === s.name}
-                      onClick={() => handleSendEmail(s.name, sr?.email || "contact@email.com")}
-                    >
-                      {sendingEmail === s.name ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
-                      ) : (
-                        <><Send className="w-3.5 h-3.5" /> Email {s.name.split(" ")[0]}</>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl font-bold text-xs gap-1.5"
-                      disabled={sendingSms === s.name}
-                      onClick={() => handleSendSms(s.name)}
-                    >
-                      {sendingSms === s.name ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
-                      ) : (
-                        <><MessageSquare className="w-3.5 h-3.5" /> SMS {s.name.split(" ")[0]}</>
-                      )}
-                    </Button>
-                  </div>
+            {seniorSummaries.map((s) => (
+              <div key={s.name} className="space-y-2">
+                <SeniorSummaryCard {...s} />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-xl font-bold text-xs gap-1.5"
+                    onClick={() => openCompose(s, "email")}
+                  >
+                    <Send className="w-3.5 h-3.5" /> Email {s.name.split(" ")[0]}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-xl font-bold text-xs gap-1.5"
+                    onClick={() => openCompose(s, "sms")}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> SMS {s.name.split(" ")[0]}
+                  </Button>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Section 6: Weekly Digest Preview */}
+        {/* Weekly Digest Preview */}
         <div className="bg-card rounded-2xl border border-border shadow-card p-5">
           <h3 className="font-black text-base mb-1">Weekly Email Digest</h3>
           <p className="text-sm text-muted-foreground mb-2">
@@ -227,6 +203,15 @@ export default function ReportsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Compose Message Modal */}
+      <ComposeMessageModal
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        senior={composeSenior}
+        channel={composeChannel}
+        weekLabel={weekLabel}
+      />
     </div>
   );
 }
