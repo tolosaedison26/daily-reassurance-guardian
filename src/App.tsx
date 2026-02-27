@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import ReportsPage from "./pages/ReportsPage";
 import AddEditSeniorPage from "./pages/AddEditSeniorPage";
 import ContactsEscalationPage from "./pages/ContactsEscalationPage";
+import SeniorProfilePage from "./pages/SeniorProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/seniors/new" element={<AddEditSeniorPage />} />
+            <Route path="/seniors/:id" element={<SeniorProfilePage />} />
             <Route path="/seniors/:id/edit" element={<AddEditSeniorPage />} />
             <Route path="/seniors/:id/alert" element={<SeniorAlertDetail />} />
             <Route path="/seniors/:id/contacts" element={<ContactsEscalationPage />} />
