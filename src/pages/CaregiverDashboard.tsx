@@ -365,6 +365,16 @@ export default function CaregiverDashboard() {
 
       {/* Seniors list */}
       <div className="px-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-lg">Your Seniors</h2>
+          <Button
+            onClick={() => navigate("/seniors/new")}
+            size="sm"
+            className="rounded-xl font-black gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Add Senior
+          </Button>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="text-muted-foreground animate-pulse text-lg font-semibold">Loading…</div>
