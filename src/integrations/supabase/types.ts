@@ -110,6 +110,131 @@ export type Database = {
         }
         Relationships: []
       }
+      managed_senior_contacts: {
+        Row: {
+          created_at: string
+          delay_minutes: number
+          email: string | null
+          id: string
+          managed_senior_id: string
+          name: string
+          notify_via_email: boolean
+          notify_via_sms: boolean
+          phone: string | null
+          relationship: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          delay_minutes?: number
+          email?: string | null
+          id?: string
+          managed_senior_id: string
+          name: string
+          notify_via_email?: boolean
+          notify_via_sms?: boolean
+          phone?: string | null
+          relationship?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          delay_minutes?: number
+          email?: string | null
+          id?: string
+          managed_senior_id?: string
+          name?: string
+          notify_via_email?: boolean
+          notify_via_sms?: boolean
+          phone?: string | null
+          relationship?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "managed_senior_contacts_managed_senior_id_fkey"
+            columns: ["managed_senior_id"]
+            isOneToOne: false
+            referencedRelation: "managed_seniors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      managed_seniors: {
+        Row: {
+          caregiver_id: string
+          claimed_by: string | null
+          created_at: string
+          custom_days: string[] | null
+          date_of_birth: string | null
+          first_name: string
+          frequency: string
+          grace_period_minutes: number
+          id: string
+          last_name: string
+          mood_check_enabled: boolean
+          notes: string | null
+          phone: string | null
+          relationship: string | null
+          reminder_hour: string
+          reminder_minute: string
+          reminder_period: string
+          timezone: string
+          updated_at: string
+          vacation_from: string | null
+          vacation_mode: boolean
+          vacation_until: string | null
+        }
+        Insert: {
+          caregiver_id: string
+          claimed_by?: string | null
+          created_at?: string
+          custom_days?: string[] | null
+          date_of_birth?: string | null
+          first_name: string
+          frequency?: string
+          grace_period_minutes?: number
+          id?: string
+          last_name: string
+          mood_check_enabled?: boolean
+          notes?: string | null
+          phone?: string | null
+          relationship?: string | null
+          reminder_hour?: string
+          reminder_minute?: string
+          reminder_period?: string
+          timezone?: string
+          updated_at?: string
+          vacation_from?: string | null
+          vacation_mode?: boolean
+          vacation_until?: string | null
+        }
+        Update: {
+          caregiver_id?: string
+          claimed_by?: string | null
+          created_at?: string
+          custom_days?: string[] | null
+          date_of_birth?: string | null
+          first_name?: string
+          frequency?: string
+          grace_period_minutes?: number
+          id?: string
+          last_name?: string
+          mood_check_enabled?: boolean
+          notes?: string | null
+          phone?: string | null
+          relationship?: string | null
+          reminder_hour?: string
+          reminder_minute?: string
+          reminder_period?: string
+          timezone?: string
+          updated_at?: string
+          vacation_from?: string | null
+          vacation_mode?: boolean
+          vacation_until?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
