@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import AuthPage from "@/pages/AuthPage";
-import SeniorHome from "@/pages/SeniorHome";
+
 import LandingPage from "@/pages/LandingPage";
 
 export default function Index() {
