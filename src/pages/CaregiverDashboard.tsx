@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
@@ -15,18 +15,75 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { SeniorListSkeleton, StatsStripSkeleton } from "@/components/ui/LoadingSkeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/ui/StatusBadge";
+import TodayOverviewBanner from "@/components/senior/TodayOverviewBanner";
+
+interface ManagedSeniorData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  vacation_mode?: boolean;
+  vacation_from?: string | null;
+  vacation_until?: string | null;
+  reminder_hour?: string;
+  reminder_minute?: string;
+  reminder_period?: string;
+  grace_period_minutes?: number;
+  frequency?: string;
+  custom_days?: string[] | null;
+  caregiver_id: string;
+  created_at: string;
+  claimed_by?: string | null;
+}
 
 interface SeniorStatus {
   connection_id: string;
   senior_id: string;
   full_name: string;
-  status: "checked" | "not-checked" | "managed";
+  status: "safe" | "pending" | "missed" | "paused" | "none";
   last_check_in: string | null;
   is_managed?: boolean;
+  relationship?: string | null;
+}
+
+/** Derive status at render time from data - never cache the string */
+function deriveManagedStatus(ms: ManagedSeniorData, hasCheckedInToday: boolean): "safe" | "pending" | "missed" | "paused" | "none" {
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+
+  // 1. Check vacation/pause
+  if (ms.vacation_mode && ms.vacation_from && ms.vacation_until) {
+    if (todayStr >= ms.vacation_from && todayStr <= ms.vacation_until) {
+      return "paused";
+    }
+    // Pause expired — fall through to normal logic
+  }
+
+  // 2. Checked in today
+  if (hasCheckedInToday) return "safe";
+
+  // 3. Compute reminder time and grace period
+  const reminderHour = parseInt(ms.reminder_hour || "9");
+  const isPM = ms.reminder_period === "PM";
+  const actualHour = isPM && reminderHour !== 12 ? reminderHour + 12 : (!isPM && reminderHour === 12 ? 0 : reminderHour);
+  const reminderMinute = parseInt(ms.reminder_minute || "0");
+  const graceMinutes = ms.grace_period_minutes || 60;
+
+  const nowMinutes = today.getHours() * 60 + today.getMinutes();
+  const reminderMinutes = actualHour * 60 + reminderMinute;
+
+  // Before reminder time
+  if (nowMinutes < reminderMinutes) return "none";
+
+  // Within grace period
+  if (nowMinutes < reminderMinutes + graceMinutes) return "pending";
+
+  // Grace period expired
+  return "missed";
 }
 
 export default function CaregiverDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile } = useAuth();
   const [seniors, setSeniors] = useState<SeniorStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +118,14 @@ export default function CaregiverDashboard() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Re-derive on focus
+    const handleFocus = () => loadSeniors();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [user]);
 
   const loadSeniors = async () => {
@@ -77,7 +141,7 @@ export default function CaregiverDashboard() {
               connection_id: conn.id,
               senior_id: conn.senior_id,
               full_name: p?.full_name || "Unknown",
-              status: checkIn ? ("checked" as const) : ("not-checked" as const),
+              status: checkIn ? ("safe" as const) : ("pending" as const),
               last_check_in: checkIn
                 ? new Date(checkIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                 : null,
@@ -92,16 +156,40 @@ export default function CaregiverDashboard() {
       .eq("caregiver_id", user.id)
       .order("created_at", { ascending: false });
 
-    const managedStatuses: SeniorStatus[] = (managed || []).map((ms: any) => ({
-      connection_id: ms.id,
-      senior_id: ms.id,
-      full_name: `${ms.first_name} ${ms.last_name}`,
-      status: "managed" as const,
-      last_check_in: null,
-      is_managed: true,
-    }));
+    const managedStatuses: SeniorStatus[] = await Promise.all(
+      (managed || []).map(async (ms: any) => {
+        // Check if this managed senior has checked in today
+        let hasCheckedIn = false;
+        if (ms.claimed_by) {
+          const today = new Date().toISOString().split("T")[0];
+          const { data: checkIn } = await supabase
+            .from("daily_check_ins")
+            .select("id")
+            .eq("senior_id", ms.claimed_by)
+            .eq("check_date", today)
+            .maybeSingle();
+          hasCheckedIn = !!checkIn;
+        }
+        const status = deriveManagedStatus(ms as ManagedSeniorData, hasCheckedIn);
+        return {
+          connection_id: ms.id,
+          senior_id: ms.id,
+          full_name: `${ms.first_name} ${ms.last_name}`,
+          status,
+          last_check_in: null,
+          is_managed: true,
+          relationship: ms.relationship,
+        };
+      })
+    );
 
-    setSeniors([...connectedStatuses, ...managedStatuses]);
+    // Sort by urgency: missed > pending > paused > none > safe
+    const urgency: Record<string, number> = { missed: 0, pending: 1, paused: 2, none: 3, safe: 4 };
+    const allSeniors = [...connectedStatuses, ...managedStatuses].sort(
+      (a, b) => (urgency[a.status] ?? 3) - (urgency[b.status] ?? 3)
+    );
+
+    setSeniors(allSeniors);
     setLoading(false);
   };
 
@@ -138,8 +226,8 @@ export default function CaregiverDashboard() {
     setDisconnecting(null);
   };
 
-  const checkedCount = seniors.filter((s) => s.status === "checked").length;
-  const notCheckedCount = seniors.filter((s) => s.status === "not-checked").length;
+  const safeCount = seniors.filter((s) => s.status === "safe").length;
+  const pendingCount = seniors.filter((s) => s.status === "pending" || s.status === "none").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
   // Demo alert data
@@ -170,6 +258,27 @@ export default function CaregiverDashboard() {
   ];
   const demoAlerts = allDemoAlerts.filter(a => !resolvedAlerts.has(a.seniorId));
   const alertCount = demoAlerts.length;
+  const missedCount = seniors.filter(s => s.status === "missed").length + alertCount;
+
+  // Status badge helper
+  const getStatusBadge = (s: SeniorStatus) => {
+    switch (s.status) {
+      case "safe": return "safe" as const;
+      case "pending": return "pending" as const;
+      case "missed": return "missed" as const;
+      case "paused": return "paused" as const;
+      default: return "paused" as const;
+    }
+  };
+
+  // Filter function
+  const filterSenior = (s: SeniorStatus) => {
+    if (!statusFilter || statusFilter === "total") return true;
+    if (statusFilter === "safe") return s.status === "safe";
+    if (statusFilter === "pending") return s.status === "pending" || s.status === "none";
+    if (statusFilter === "alert") return s.status === "missed";
+    return true;
+  };
 
   return (
     <div className="space-y-5">
@@ -180,6 +289,16 @@ export default function CaregiverDashboard() {
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
+
+      {/* Today's Overview Banner */}
+      {!loading && seniors.length > 0 && (
+        <TodayOverviewBanner
+          totalSeniors={seniors.length + alertCount}
+          safeCount={safeCount}
+          pendingCount={pendingCount}
+          alertCount={missedCount}
+        />
+      )}
 
       {/* Push notification prompt */}
       {notifPermission === "default" && (
@@ -285,7 +404,7 @@ export default function CaregiverDashboard() {
                 <CheckCircle className="w-6 h-6" style={{ color: "hsl(var(--status-checked))" }} />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-checked))" }}>{checkedCount}</p>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-checked))" }}>{safeCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">✓ Safe</p>
               </div>
             </button>
@@ -298,7 +417,7 @@ export default function CaregiverDashboard() {
                 <XCircle className="w-6 h-6" style={{ color: "hsl(var(--status-pending))" }} />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-pending))" }}>{notCheckedCount}</p>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-pending))" }}>{pendingCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">⏳ Pending</p>
               </div>
             </button>
@@ -307,15 +426,15 @@ export default function CaregiverDashboard() {
               onClick={() => setStatusFilter(statusFilter === "alert" ? null : "alert")}
               className={`rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "alert" ? "ring-2 ring-primary" : ""}`}
               style={{
-                background: alertCount > 0 ? "hsl(var(--status-alert) / 0.06)" : "hsl(var(--card))",
-                borderColor: statusFilter === "alert" ? undefined : (alertCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))"),
+                background: missedCount > 0 ? "hsl(var(--status-alert) / 0.06)" : "hsl(var(--card))",
+                borderColor: statusFilter === "alert" ? undefined : (missedCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))"),
               }}
             >
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-alert) / 0.12)" }}>
                 <AlertTriangle className="w-6 h-6" style={{ color: "hsl(var(--status-alert))" }} />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-alert))" }}>{alertCount}</p>
+                <p className="text-3xl font-black leading-none" style={{ color: "hsl(var(--status-alert))" }}>{missedCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">🚨 Alert</p>
               </div>
             </button>
@@ -362,82 +481,97 @@ export default function CaregiverDashboard() {
           />
         ) : (
           <div className="space-y-3">
-            {seniors.filter((s) => {
-              if (!statusFilter || statusFilter === "total") return true;
-              if (statusFilter === "safe") return s.status === "checked";
-              if (statusFilter === "pending") return s.status === "not-checked";
-              if (statusFilter === "alert") return false;
-              return true;
-            }).map((senior) => (
-              <div
-                key={senior.connection_id}
-                className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-all hover:bg-muted/50 relative"
-                onClick={() => navigate(`/seniors/${senior.senior_id}`)}
-                role="link"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter") navigate(`/seniors/${senior.senior_id}`); }}
-                style={{
-                  borderColor: senior.status === "checked" ? "hsl(var(--status-checked) / 0.3)" : "hsl(var(--border))",
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shrink-0"
-                    style={{
-                      background: senior.status === "checked" ? "hsl(var(--status-checked) / 0.12)" : "hsl(var(--muted))",
-                      color: senior.status === "checked" ? "hsl(var(--status-checked))" : "hsl(var(--muted-foreground))",
-                    }}
-                  >
-                    {senior.full_name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-lg leading-tight truncate">{senior.full_name}</p>
-                    {senior.status === "checked" && senior.last_check_in ? (
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: "hsl(var(--status-checked))" }} />
-                        <p className="text-sm" style={{ color: "hsl(var(--status-checked))" }}>
-                          Checked in at {senior.last_check_in}
-                        </p>
-                      </div>
-                    ) : senior.is_managed ? (
-                      <p className="text-sm mt-0.5 text-muted-foreground">Managed profile — not yet linked</p>
-                    ) : (
-                      <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-pending))" }}>
-                        Has <strong>not</strong> checked in yet today
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {senior.is_managed && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
-                        className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                        aria-label={`Contacts for ${senior.full_name}`}
-                      >
-                        <PhoneCall className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/edit`); }}
-                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                      aria-label={`Edit ${senior.full_name}`}
+            {seniors.filter(filterSenior).map((senior) => {
+              const isSelected = location.pathname === `/seniors/${senior.senior_id}`;
+              return (
+                <Link
+                  key={senior.connection_id}
+                  to={`/seniors/${senior.senior_id}`}
+                  className={`block bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-all hover:bg-muted/50 relative no-underline ${
+                    isSelected ? "border-l-4 bg-primary/5" : ""
+                  }`}
+                  style={{
+                    borderColor: isSelected
+                      ? "hsl(var(--primary))"
+                      : senior.status === "safe"
+                      ? "hsl(var(--status-checked) / 0.3)"
+                      : senior.status === "missed"
+                      ? "hsl(var(--status-alert) / 0.3)"
+                      : "hsl(var(--border))",
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shrink-0"
+                      style={{
+                        background: senior.status === "safe" ? "hsl(var(--status-checked) / 0.12)"
+                          : senior.status === "missed" ? "hsl(var(--status-alert) / 0.12)"
+                          : "hsl(var(--muted))",
+                        color: senior.status === "safe" ? "hsl(var(--status-checked))"
+                          : senior.status === "missed" ? "hsl(var(--status-alert))"
+                          : "hsl(var(--muted-foreground))",
+                      }}
                     >
-                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
-                    <StatusBadge
-                      status={senior.status === "checked" ? "safe" : senior.is_managed ? "paused" : "pending"}
-                    />
-                    {!senior.is_managed && (
-                      <DisconnectSeniorDialog
-                        seniorName={senior.full_name}
-                        onConfirm={() => handleDisconnect(senior.connection_id)}
-                        disconnecting={disconnecting === senior.connection_id}
-                      />
-                    )}
+                      {senior.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-lg leading-tight truncate text-foreground">{senior.full_name}</p>
+                        {senior.relationship && (
+                          <span className="text-xs text-muted-foreground">· {senior.relationship}</span>
+                        )}
+                      </div>
+                      {senior.status === "safe" && senior.last_check_in ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: "hsl(var(--status-checked))" }} />
+                          <p className="text-sm" style={{ color: "hsl(var(--status-checked))" }}>
+                            Checked in at {senior.last_check_in}
+                          </p>
+                        </div>
+                      ) : senior.status === "missed" ? (
+                        <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-alert))" }}>
+                          Missed today's check-in
+                        </p>
+                      ) : senior.status === "paused" ? (
+                        <p className="text-sm mt-0.5 text-muted-foreground">Check-ins paused</p>
+                      ) : (
+                        <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-pending))" }}>
+                          Has <strong>not</strong> checked in yet today
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {senior.is_managed && (
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
+                          className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                          aria-label={`Contacts for ${senior.full_name}`}
+                        >
+                          <PhoneCall className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/edit`); }}
+                        className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                        aria-label={`Edit ${senior.full_name}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      <StatusBadge status={getStatusBadge(senior)} />
+                      {!senior.is_managed && (
+                        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          <DisconnectSeniorDialog
+                            seniorName={senior.full_name}
+                            onConfirm={() => handleDisconnect(senior.connection_id)}
+                            disconnecting={disconnecting === senior.connection_id}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
