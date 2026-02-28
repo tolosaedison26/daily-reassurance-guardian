@@ -6,7 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function AccountSettingsPage({ onBack }: { onBack?: () => void } = {}) {
@@ -88,8 +88,27 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
     setPasswordSaving(false);
   };
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      {/* Back button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleBack}
+        className="gap-1 text-muted-foreground hover:text-foreground -ml-2 min-h-[44px]"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Back
+      </Button>
+
       {/* Display Name */}
       <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
         <div className="flex items-center gap-2">
@@ -192,14 +211,14 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
       {/* Preferences */}
       <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-4">
         <h2 className="font-bold text-base">Preferences</h2>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between min-h-[44px]">
           <div className="flex items-center gap-2">
             <Moon className="w-4 h-4 text-primary" />
             <span className="text-sm font-semibold">Dark Mode</span>
           </div>
           <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between min-h-[44px]">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-primary" />
             <span className="text-sm font-semibold">Push Notifications</span>
