@@ -6,8 +6,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Bell, CheckCircle, Pencil, MoreHorizontal, Phone, Copy, PauseCircle, PlayCircle, PhoneCall, Download, Archive, Trash2, ChevronLeft, Loader2 } from "lucide-react";
+import { Bell, CheckCircle, Pencil, MoreHorizontal, Phone, Copy, PauseCircle, PlayCircle, PhoneCall, Download, Archive, Trash2, ChevronLeft, Loader2, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import InlineConfirm from "@/components/senior/InlineConfirm";
 
 type Status = "checked" | "awaiting" | "missed" | "none" | "paused";
 
@@ -20,6 +22,7 @@ interface SeniorProfileHeaderProps {
   status: Status;
   lastCheckIn?: string | null;
   seniorId: string;
+  onStatusChange?: (newStatus: Status) => void;
 }
 
 function getAge(dob: string): number {
@@ -39,23 +42,28 @@ const statusConfig: Record<Status, { label: string; bg: string; fg: string }> = 
   paused: { label: "⏸ Check-ins Paused", bg: "hsl(var(--muted))", fg: "hsl(var(--muted-foreground))" },
 };
 
-export default function SeniorProfileHeader({ firstName, lastName, relationship, dateOfBirth, phone, status: initialStatus, lastCheckIn, seniorId }: SeniorProfileHeaderProps) {
+export default function SeniorProfileHeader({ firstName, lastName, relationship, dateOfBirth, phone, status: initialStatus, lastCheckIn, seniorId, onStatusChange }: SeniorProfileHeaderProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [reminderOpen, setReminderOpen] = useState(false);
-  const [safeOpen, setSafeOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [removeText, setRemoveText] = useState("");
   const [sending, setSending] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [markedSafe, setMarkedSafe] = useState(false);
+  const [markingSafe, setMarkingSafe] = useState(false);
+  const [showMarkSafeConfirm, setShowMarkSafeConfirm] = useState(false);
 
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const fullName = `${firstName} ${lastName}`;
   const age = dateOfBirth ? getAge(dateOfBirth) : null;
-  const currentStatus = paused ? "paused" : initialStatus;
+  const currentStatus = markedSafe ? "checked" : paused ? "paused" : initialStatus;
   const sc = statusConfig[currentStatus];
+
+  const isAlreadySafe = currentStatus === "checked";
+  const isPaused = currentStatus === "paused";
 
   const copyPhone = () => {
     if (phone) {
@@ -73,14 +81,42 @@ export default function SeniorProfileHeader({ firstName, lastName, relationship,
     }, 800);
   };
 
-  const handleMarkSafe = () => {
-    setSafeOpen(false);
-    toast({ title: `${fullName} marked safe` });
+  const handleMarkSafe = async () => {
+    setMarkingSafe(true);
+    try {
+      // Try to insert a check-in record for today
+      const today = new Date().toISOString().split("T")[0];
+      // For managed seniors, try to find the claimed_by user
+      const { data: managedData } = await supabase
+        .from("managed_seniors")
+        .select("claimed_by")
+        .eq("id", seniorId)
+        .maybeSingle();
+
+      const seniorUserId = (managedData as any)?.claimed_by;
+      if (seniorUserId) {
+        await supabase.from("daily_check_ins").upsert({
+          senior_id: seniorUserId,
+          check_date: today,
+          checked_in_at: new Date().toISOString(),
+        }, { onConflict: "senior_id,check_date" });
+      }
+
+      // Mark safe in localStorage for persistence
+      localStorage.setItem(`marked_safe_${today}_${seniorId}`, "true");
+
+      setMarkedSafe(true);
+      setShowMarkSafeConfirm(false);
+      onStatusChange?.("checked");
+      toast({ title: `${fullName} marked as safe for today.` });
+    } catch (err) {
+      toast({ title: "Could not mark safe", description: "Please try again.", variant: "destructive" });
+    }
+    setMarkingSafe(false);
   };
 
   const handleDownloadCSV = () => {
     setDownloading(true);
-    // Generate CSV from mock history data
     const headers = ["Date", "Status", "Time", "Mood", "Response (min)"];
     const rows: string[][] = [];
     const today = new Date();
@@ -124,13 +160,47 @@ export default function SeniorProfileHeader({ firstName, lastName, relationship,
   const handleArchive = () => {
     setArchiveOpen(false);
     toast({ title: `${fullName} archived`, description: "They have been moved to your archived seniors." });
-    navigate("/");
+    navigate("/dashboard");
+  };
+
+  // Determine mark safe button state
+  const getMarkSafeButton = () => {
+    if (isAlreadySafe) {
+      return (
+        <Button variant="outline" size="sm" disabled className="shrink-0 gap-1.5 rounded-xl font-bold opacity-60">
+          <Check className="w-4 h-4" /> Already Safe Today
+        </Button>
+      );
+    }
+    if (isPaused) {
+      return (
+        <Button variant="outline" size="sm" disabled className="shrink-0 gap-1.5 rounded-xl font-bold opacity-60">
+          Check-ins Paused
+        </Button>
+      );
+    }
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 gap-1.5 rounded-xl font-bold"
+        style={{ borderColor: "hsl(var(--status-checked) / 0.4)", color: "hsl(var(--status-checked))" }}
+        onClick={() => setShowMarkSafeConfirm(true)}
+        disabled={markingSafe}
+      >
+        {markingSafe ? (
+          <><Loader2 className="w-4 h-4 animate-spin" /> Marking safe…</>
+        ) : (
+          <><CheckCircle className="w-4 h-4" /> Mark Safe</>
+        )}
+      </Button>
+    );
   };
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-5 md:p-6">
       {/* Back link */}
-      <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground mb-4 -mt-1">
+      <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground mb-4 -mt-1 min-h-[44px]">
         <ChevronLeft className="w-4 h-4" /> Dashboard
       </button>
 
@@ -156,7 +226,7 @@ export default function SeniorProfileHeader({ firstName, lastName, relationship,
             <div className="flex items-center gap-1.5 mt-1.5">
               <Phone className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">{phone}</span>
-              <button onClick={copyPhone} className="p-0.5 rounded hover:bg-muted">
+              <button onClick={copyPhone} className="p-0.5 rounded hover:bg-muted min-h-[44px] min-w-[44px] flex items-center justify-center">
                 <Copy className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </div>
@@ -173,6 +243,20 @@ export default function SeniorProfileHeader({ firstName, lastName, relationship,
           )}
         </div>
       </div>
+
+      {/* Inline confirmation for Mark Safe */}
+      {showMarkSafeConfirm && (
+        <div className="mt-3">
+          <InlineConfirm
+            message={`Mark ${firstName} as safe for today?`}
+            confirmLabel="Yes, Mark Safe"
+            onConfirm={handleMarkSafe}
+            onCancel={() => setShowMarkSafeConfirm(false)}
+            loading={markingSafe}
+            variant="safe"
+          />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-2 mt-4 overflow-x-auto pb-1 -mb-1">
@@ -195,20 +279,7 @@ export default function SeniorProfileHeader({ firstName, lastName, relationship,
         </Popover>
 
         {/* Mark Safe */}
-        <Popover open={safeOpen} onOpenChange={setSafeOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-xl font-bold" style={{ borderColor: "hsl(var(--status-checked) / 0.4)", color: "hsl(var(--status-checked))" }}>
-              <CheckCircle className="w-4 h-4" /> Mark Safe
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72">
-            <p className="text-sm font-bold mb-3">Mark {firstName} as safe for today's check-in?</p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setSafeOpen(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleMarkSafe} className="font-bold" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>Mark Safe</Button>
-            </div>
-          </PopoverContent>
-        </Popover>
+        {getMarkSafeButton()}
 
         {/* Edit Profile */}
         <Button variant="ghost" size="sm" className="shrink-0 gap-1.5 rounded-xl font-bold" onClick={() => navigate(`/seniors/${seniorId}/edit`)}>
@@ -281,7 +352,7 @@ export default function SeniorProfileHeader({ firstName, lastName, relationship,
             <AlertDialogAction
               disabled={removeText !== "REMOVE"}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { toast({ title: `${fullName} removed` }); navigate("/"); }}
+              onClick={() => { toast({ title: `${fullName} removed` }); navigate("/dashboard"); }}
             >
               Remove Permanently
             </AlertDialogAction>
