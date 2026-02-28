@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import WeeklyStatsRow from "@/components/WeeklyStatsRow";
 import CheckinRatesCard from "@/components/CheckinRatesCard";
 import MoodTrendsCard from "@/components/MoodTrendsCard";
@@ -51,14 +52,37 @@ function getWeekLabel(offset: number) {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
+// Persistent mark-safe helpers
+function getMarkedSafeKey(seniorId: string) {
+  const today = new Date().toISOString().split("T")[0];
+  return `marked_safe_${today}_${seniorId}`;
+}
+
+function isMarkedSafe(seniorId: string): boolean {
+  return localStorage.getItem(getMarkedSafeKey(seniorId)) === "true";
+}
+
+function markSafe(seniorId: string) {
+  localStorage.setItem(getMarkedSafeKey(seniorId), "true");
+  // Also sync with sessionStorage for dashboard
+  const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+  if (!existing.includes("dorothy-attention")) {
+    existing.push("dorothy-attention");
+    sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
+  }
+}
+
 export default function ReportsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [weekOffset, setWeekOffset] = useState(0);
-  const [attentionDismissed, setAttentionDismissed] = useState(false);
+  const [attentionDismissed, setAttentionDismissed] = useState(() => isMarkedSafe("demo-dorothy"));
+  const [attentionFading, setAttentionFading] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeChannel, setComposeChannel] = useState<"email" | "sms">("email");
   const [composeSenior, setComposeSenior] = useState<typeof seniorSummaries[0] & { email?: string } | null>(null);
+  const [sendingPreview, setSendingPreview] = useState(false);
 
   const seniorRates = getSeniorRates(weekOffset);
   const overallRate = Math.round(seniorRates.reduce((s, r) => s + r.rate, 0) / seniorRates.length);
@@ -77,13 +101,20 @@ export default function ReportsPage() {
   };
 
   const handleMarkSafeFromReport = () => {
-    setAttentionDismissed(true);
-    const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
-    if (!existing.includes("dorothy-attention")) {
-      existing.push("dorothy-attention");
-      sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
-    }
-    toast({ title: "Dorothy Wilson marked safe", description: "Attention alert dismissed." });
+    setAttentionFading(true);
+    setTimeout(() => {
+      setAttentionDismissed(true);
+      markSafe("demo-dorothy");
+      toast({ title: "Dorothy Wilson marked as safe for today." });
+    }, 200);
+  };
+
+  const handleSendPreview = () => {
+    setSendingPreview(true);
+    setTimeout(() => {
+      setSendingPreview(false);
+      toast({ title: "Preview digest sent", description: `Sent to ${user?.email || "your email address"}.` });
+    }, 1500);
   };
 
   const weekLabel = getWeekLabel(weekOffset);
@@ -117,7 +148,10 @@ export default function ReportsPage() {
       </div>
 
       {showAttention && (
-        <div className="rounded-2xl p-5 border shadow-card" style={{ background: "hsl(var(--status-alert) / 0.06)", borderColor: "hsl(var(--status-alert) / 0.3)" }}>
+        <div
+          className={`rounded-2xl p-5 border shadow-card transition-opacity duration-200 ${attentionFading ? "opacity-0" : "opacity-100"}`}
+          style={{ background: "hsl(var(--status-alert) / 0.06)", borderColor: "hsl(var(--status-alert) / 0.3)" }}
+        >
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-5 h-5" style={{ color: "hsl(var(--status-alert))" }} />
             <h3 className="font-black text-base" style={{ color: "hsl(var(--status-alert))" }}>Attention Needed</h3>
@@ -155,12 +189,34 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Weekly Email Digest */}
       <div className="bg-card rounded-2xl border border-border shadow-card p-5">
         <h3 className="font-black text-base mb-1">Weekly Email Digest</h3>
-        <p className="text-sm text-muted-foreground mb-2">A summary is automatically emailed every Sunday at 8 AM.</p>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => toast({ title: "Preview Sent", description: "A preview digest email has been sent." })}>
-          <Mail className="w-4 h-4" /> Send Preview Email
+        <p className="text-sm text-muted-foreground mb-3">A summary is automatically emailed every Sunday at 8 AM.</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          disabled={sendingPreview}
+          onClick={handleSendPreview}
+        >
+          {sendingPreview ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+          ) : (
+            <><Mail className="w-4 h-4" /> Send Preview Email</>
+          )}
         </Button>
+        <p className="text-xs text-muted-foreground mt-2">
+          {user?.email
+            ? `Sent to: ${user.email}`
+            : (
+              <>
+                Add your email in Settings to use this feature.{" "}
+                <button onClick={() => navigate("/settings")} className="text-primary hover:underline font-semibold">Go to Settings →</button>
+              </>
+            )
+          }
+        </p>
       </div>
 
       <ComposeMessageModal open={composeOpen} onOpenChange={setComposeOpen} senior={composeSenior} channel={composeChannel} weekLabel={weekLabel} />
