@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import EmergencyContacts from "@/components/EmergencyContacts";
 import SeniorActivityPanel from "@/components/SeniorActivityPanel";
 import InviteCodeCard from "@/components/InviteCodeCard";
 import AccountSettingsPage from "@/pages/AccountSettingsPage";
+import MoodSelector from "@/components/senior/MoodSelector";
+import CheckinSuccessScreen from "@/components/senior/CheckinSuccessScreen";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -31,11 +33,13 @@ export default function SeniorHome() {
   const [showSound, setShowSound] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const [justCheckedIn, setJustCheckedIn] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<"great" | "okay" | "bad" | null>(null);
   const [loading, setLoading] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
   const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const [showMoodSelector, setShowMoodSelector] = useState(false);
   const emergencyLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
@@ -65,24 +69,40 @@ export default function SeniorHome() {
     if (data) setReminderTime(data.reminder_time.slice(0, 5));
   };
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (mood?: "great" | "okay" | "bad") => {
     if (!user || status === "checked" || loading) return;
     setLoading(true);
     const { data } = await createCheckIn(user.id);
     if (data) {
       setStatus("checked");
-      setJustCheckedIn(true);
+      if (mood) setSelectedMood(mood);
       const time = new Date(data.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       setCheckInTime(time);
-      setTimeout(() => setJustCheckedIn(false), 3500);
+      setShowSuccess(true);
     }
     setLoading(false);
   };
+
+  const handleMoodSelect = (mood: "great" | "okay" | "bad") => {
+    setSelectedMood(mood);
+    // If not yet checked in, treat mood tap as check-in + mood
+    if (status !== "checked") {
+      handleCheckIn(mood);
+    }
+  };
+
+  const dismissSuccess = useCallback(() => {
+    setShowSuccess(false);
+    setShowMoodSelector(false);
+  }, []);
 
   const firstName = profile?.full_name?.split(" ")[0] || "Friend";
 
   if (showAccountSettings) return <AccountSettingsPage onBack={() => setShowAccountSettings(false)} />;
   if (showSound) return <SoundPlayer onBack={() => setShowSound(false)} />;
+  if (showSuccess) {
+    return <CheckinSuccessScreen firstName={firstName} mood={selectedMood} onDismiss={dismissSuccess} />;
+  }
 
   const isChecked = status === "checked";
   const isPending = status === "pending";
@@ -93,28 +113,28 @@ export default function SeniorHome() {
       <div className="flex items-center justify-between px-4 sm:px-5 pt-8 sm:pt-10 pb-4">
         <div className="flex items-center gap-2">
           <span className="text-2xl">☀️</span>
-          <span className="text-lg font-black tracking-tight text-primary">
+          <span className="text-lg font-black tracking-tight" style={{ color: "hsl(var(--primary))" }}>
             Daily Guardian
           </span>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowActivity(true)}
-            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-muted flex items-center justify-center relative"
+            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center relative"
             aria-label="My activity"
           >
             <Bell className="w-5 h-5 text-muted-foreground" />
           </button>
           <button
             onClick={() => setShowAccountSettings(true)}
-            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-muted flex items-center justify-center"
+            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center"
             aria-label="Account Settings"
           >
             <Settings className="w-5 h-5 text-muted-foreground" />
           </button>
           <button
             onClick={signOut}
-            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-muted flex items-center justify-center"
+            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center"
             aria-label="Sign out"
           >
             <LogOut className="w-5 h-5 text-muted-foreground" />
@@ -123,14 +143,14 @@ export default function SeniorHome() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center px-4 sm:px-5 pt-6 pb-24 gap-4">
+      <div className="flex-1 flex flex-col items-center px-4 sm:px-5 pt-6 pb-24 gap-5">
 
-        {/* Greeting */}
+        {/* Greeting — large for seniors */}
         <div className="w-full text-center">
-          <h1 className="text-3xl font-black text-foreground leading-tight">
-            Hi {firstName}! 👋
+          <h1 className="font-black text-foreground leading-tight" style={{ fontSize: "28px", lineHeight: "36px" }}>
+            {isChecked ? `You're all set, ${firstName}!` : `Good morning, ${firstName}!`} 👋
           </h1>
-          <p className="text-base text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1" style={{ fontSize: "18px", lineHeight: "28px" }}>
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </p>
         </div>
@@ -142,81 +162,71 @@ export default function SeniorHome() {
           />
         </div>
 
-        {/* Status card */}
-        <div
-          className="w-full rounded-2xl p-5 sm:p-6 shadow-card border text-center"
-          style={{
-            background: isChecked
-              ? "hsl(var(--status-checked) / 0.06)"
-              : isPending
-              ? "hsl(var(--status-pending) / 0.06)"
-              : "hsl(var(--card))",
-            borderColor: isChecked
-              ? "hsl(var(--status-checked) / 0.25)"
-              : isPending
-              ? "hsl(var(--status-pending) / 0.25)"
-              : "hsl(var(--border))",
-          }}
-        >
-          {isChecked ? (
-            <>
-              <p className="text-3xl mb-3">✅</p>
-              <p className="text-lg font-black" style={{ color: "hsl(var(--status-checked))" }}>
-                You're all checked in!
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Checked in at {checkInTime} · Your family knows you're safe 💚
-              </p>
-            </>
-          ) : isPending ? (
-            <>
-              <p className="text-3xl mb-3">⏰</p>
-              <p className="text-lg font-black text-foreground">
-                Time to check in!
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                You{" "}
-                <span className="font-bold" style={{ color: "hsl(var(--status-pending))" }}>
-                  have not
-                </span>{" "}
-                checked in yet today. Tap the button below!
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-3xl mb-3">🌅</p>
-              <p className="text-lg font-black text-foreground">Good morning!</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Your daily check-in reminder is at {reminderTime}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Just checked in toast */}
-        {justCheckedIn && (
-          <div className="w-full rounded-2xl bg-card border border-border shadow-card p-4 flex items-center gap-3 animate-bounce-in">
-            <span className="text-2xl">🎉</span>
-            <div>
-              <p className="font-bold text-sm">Check-in complete!</p>
-              <p className="text-xs text-muted-foreground">Your family has been notified you're safe.</p>
-            </div>
+        {/* Overdue warning (soft amber, not alarming) */}
+        {isPending && (
+          <div
+            className="w-full rounded-2xl p-4 border text-center"
+            style={{
+              background: "hsl(var(--status-pending) / 0.06)",
+              borderColor: "hsl(var(--status-pending) / 0.25)",
+            }}
+          >
+            <p className="font-semibold" style={{ fontSize: "16px", color: "hsl(var(--status-pending))" }}>
+              Your family is waiting to hear from you.
+            </p>
+            <p className="text-muted-foreground mt-1" style={{ fontSize: "16px" }}>
+              Please tap the button below when you see this.
+            </p>
           </div>
         )}
 
-        {/* Big CTA button */}
-        {!isChecked && (
-          <Button
-            onClick={handleCheckIn}
-            disabled={loading}
-            className="w-full min-h-[48px] h-14 text-base font-semibold rounded-2xl border-0 shadow-btn"
+        {/* Checked-in state */}
+        {isChecked ? (
+          <div
+            className="w-full rounded-2xl p-6 border text-center"
             style={{
-              background: "hsl(var(--primary))",
-              color: "hsl(var(--primary-foreground))",
+              background: "hsl(var(--status-checked) / 0.06)",
+              borderColor: "hsl(var(--status-checked) / 0.25)",
             }}
           >
-            {loading ? "Checking in…" : "✓  I'm Safe — Check In Now"}
-          </Button>
+            <p className="text-4xl mb-3">✅</p>
+            <p className="font-black" style={{ fontSize: "22px", color: "hsl(var(--status-checked))" }}>
+              You're all checked in!
+            </p>
+            <p className="text-muted-foreground mt-2" style={{ fontSize: "18px", lineHeight: "28px" }}>
+              You checked in at {checkInTime} {selectedMood === "great" ? "😊" : selectedMood === "okay" ? "😐" : selectedMood === "bad" ? "😔" : ""}
+            </p>
+            <p className="text-muted-foreground mt-1" style={{ fontSize: "16px" }}>
+              See you tomorrow!
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* BIG CHECK-IN BUTTON — 80px tall, full width */}
+            <Button
+              onClick={() => {
+                setShowMoodSelector(true);
+                handleCheckIn();
+              }}
+              disabled={loading}
+              className="w-full rounded-2xl border-0 shadow-btn font-bold"
+              style={{
+                minHeight: "80px",
+                fontSize: "22px",
+                background: "hsl(var(--status-checked))",
+                color: "#fff",
+              }}
+            >
+              {loading ? "Checking in…" : "✓  I'M OKAY"}
+            </Button>
+
+            {/* Mood selector — always visible below CTA */}
+            <MoodSelector
+              selected={selectedMood}
+              onSelect={handleMoodSelect}
+              disabled={loading}
+            />
+          </>
         )}
 
         {/* Voice message (post check-in) */}
@@ -233,21 +243,22 @@ export default function SeniorHome() {
         <a ref={emergencyLinkRef} href="tel:911" className="hidden" aria-hidden="true" />
         <button
           onClick={() => setShowEmergencyDialog(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card min-h-[48px]"
+          className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card"
           style={{
             background: "hsl(var(--status-alert) / 0.06)",
             borderColor: "hsl(var(--status-alert) / 0.25)",
+            minHeight: "64px",
           }}
         >
           <div
-            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center shrink-0"
+            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "hsl(var(--status-alert))" }}
           >
             <Phone className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
-            <p className="font-bold text-base" style={{ color: "hsl(var(--status-alert))" }}>Emergency 911</p>
-            <p className="text-muted-foreground text-sm">Tap to call for immediate help</p>
+            <p className="font-bold" style={{ fontSize: "18px", color: "hsl(var(--status-alert))" }}>Emergency 911</p>
+            <p className="text-muted-foreground" style={{ fontSize: "16px" }}>Tap to call for immediate help</p>
           </div>
           <span className="ml-auto text-muted-foreground text-lg">›</span>
         </button>
@@ -258,17 +269,18 @@ export default function SeniorHome() {
         {/* Calm Sounds */}
         <button
           onClick={() => setShowSound(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card min-h-[48px]"
+          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card"
+          style={{ minHeight: "64px" }}
         >
           <div
-            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center shrink-0"
+            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "hsl(var(--accent))" }}
           >
             <Music className="w-5 h-5" style={{ color: "hsl(var(--accent-foreground))" }} />
           </div>
           <div className="text-left">
-            <p className="font-bold text-base">Calm Sounds</p>
-            <p className="text-muted-foreground text-sm">Rain, Ocean, Forest &amp; more</p>
+            <p className="font-bold" style={{ fontSize: "18px" }}>Calm Sounds</p>
+            <p className="text-muted-foreground" style={{ fontSize: "16px" }}>Rain, Ocean, Forest &amp; more</p>
           </div>
           <span className="ml-auto text-muted-foreground text-lg">›</span>
         </button>
