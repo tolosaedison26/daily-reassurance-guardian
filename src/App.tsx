@@ -72,6 +72,7 @@ const App = () => (
             } />
 
             {/* Protected: Seniors */}
+            <Route path="/seniors" element={<Navigate to="/dashboard" replace />} />
             <Route path="/seniors/new" element={
               <CaregiverShell pageTitle="Add Senior">
                 <AddEditSeniorPage />
