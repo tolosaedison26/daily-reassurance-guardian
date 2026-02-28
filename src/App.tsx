@@ -37,10 +37,19 @@ function ThemeInit() {
 /** Wraps caregiver-only protected routes in AppShell */
 function CaregiverShell({ pageTitle, children }: { pageTitle?: string; children: React.ReactNode }) {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="caregiver">
       <AppShell pageTitle={pageTitle}>
         {children}
       </AppShell>
+    </ProtectedRoute>
+  );
+}
+
+/** Wraps senior-only protected routes */
+function SeniorShell({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute requiredRole="senior">
+      {children}
     </ProtectedRoute>
   );
 }
@@ -63,6 +72,13 @@ const App = () => (
             <Route path="/forgot-password" element={<AuthPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/ack/:token" element={<AcknowledgmentPage />} />
+
+            {/* Protected: Senior Home */}
+            <Route path="/home" element={
+              <SeniorShell>
+                <SeniorHome />
+              </SeniorShell>
+            } />
 
             {/* Protected: Dashboard */}
             <Route path="/dashboard" element={
