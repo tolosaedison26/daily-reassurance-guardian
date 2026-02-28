@@ -371,8 +371,11 @@ export default function CaregiverDashboard() {
             }).map((senior) => (
               <div
                 key={senior.connection_id}
-                className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-transform"
+                className="bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-all hover:bg-muted/50 relative"
                 onClick={() => navigate(`/seniors/${senior.senior_id}`)}
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") navigate(`/seniors/${senior.senior_id}`); }}
                 style={{
                   borderColor: senior.status === "checked" ? "hsl(var(--status-checked) / 0.3)" : "hsl(var(--border))",
                 }}

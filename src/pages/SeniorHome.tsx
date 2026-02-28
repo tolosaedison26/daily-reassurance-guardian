@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LogOut, Music, Settings, Bell, Phone } from "lucide-react";
+import { LogOut, Music, Settings, Bell, Phone, ChevronLeft } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
@@ -89,32 +90,31 @@ export default function SeniorHome() {
   return (
     <div className="min-h-screen flex flex-col bg-background max-w-3xl mx-auto w-full">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-10 pb-4">
-        {/* Brand */}
+      <div className="flex items-center justify-between px-4 sm:px-5 pt-8 sm:pt-10 pb-4">
         <div className="flex items-center gap-2">
           <span className="text-2xl">☀️</span>
-          <span className="text-lg font-black tracking-tight" style={{ color: "hsl(var(--primary))" }}>
+          <span className="text-lg font-black tracking-tight text-primary">
             Daily Guardian
           </span>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowActivity(true)}
-            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center relative"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-muted flex items-center justify-center relative"
             aria-label="My activity"
           >
             <Bell className="w-5 h-5 text-muted-foreground" />
           </button>
           <button
             onClick={() => setShowAccountSettings(true)}
-            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-muted flex items-center justify-center"
             aria-label="Account Settings"
           >
             <Settings className="w-5 h-5 text-muted-foreground" />
           </button>
           <button
             onClick={signOut}
-            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-muted flex items-center justify-center"
             aria-label="Sign out"
           >
             <LogOut className="w-5 h-5 text-muted-foreground" />
@@ -123,7 +123,7 @@ export default function SeniorHome() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center px-5 pt-6 pb-10 gap-4">
+      <div className="flex-1 flex flex-col items-center px-4 sm:px-5 pt-6 pb-24 gap-4">
 
         {/* Greeting */}
         <div className="w-full text-center">
@@ -135,19 +135,26 @@ export default function SeniorHome() {
           </p>
         </div>
 
+        {/* Status badge */}
+        <div className="flex justify-center">
+          <StatusBadge
+            status={isChecked ? "safe" : isPending ? "pending" : "paused"}
+          />
+        </div>
+
         {/* Status card */}
         <div
-          className="w-full rounded-3xl p-6 shadow-card border border-border text-center animate-bounce-in"
+          className="w-full rounded-2xl p-5 sm:p-6 shadow-card border text-center"
           style={{
             background: isChecked
-              ? "hsl(142 60% 40% / 0.06)"
+              ? "hsl(var(--status-checked) / 0.06)"
               : isPending
-              ? "hsl(28 95% 54% / 0.06)"
+              ? "hsl(var(--status-pending) / 0.06)"
               : "hsl(var(--card))",
             borderColor: isChecked
-              ? "hsl(142 60% 40% / 0.25)"
+              ? "hsl(var(--status-checked) / 0.25)"
               : isPending
-              ? "hsl(28 95% 54% / 0.25)"
+              ? "hsl(var(--status-pending) / 0.25)"
               : "hsl(var(--border))",
           }}
         >
@@ -202,14 +209,13 @@ export default function SeniorHome() {
           <Button
             onClick={handleCheckIn}
             disabled={loading}
-            className="w-full h-14 text-lg font-black rounded-2xl border-0 shadow-btn animate-float"
+            className="w-full min-h-[48px] h-14 text-base font-semibold rounded-2xl border-0 shadow-btn"
             style={{
-              background: "hsl(var(--status-checked))",
-              color: "#fff",
-              letterSpacing: "-0.01em",
+              background: "hsl(var(--primary))",
+              color: "hsl(var(--primary-foreground))",
             }}
           >
-            {loading ? "Checking in…" : "✓  Check In Now"}
+            {loading ? "Checking in…" : "✓  I'm Safe — Check In Now"}
           </Button>
         )}
 
@@ -227,20 +233,20 @@ export default function SeniorHome() {
         <a ref={emergencyLinkRef} href="tel:911" className="hidden" aria-hidden="true" />
         <button
           onClick={() => setShowEmergencyDialog(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card"
+          className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card min-h-[48px]"
           style={{
-            background: "hsl(0 70% 50% / 0.06)",
-            borderColor: "hsl(0 70% 50% / 0.25)",
+            background: "hsl(var(--status-alert) / 0.06)",
+            borderColor: "hsl(var(--status-alert) / 0.25)",
           }}
         >
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "hsl(0 70% 50%)" }}
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "hsl(var(--status-alert))" }}
           >
             <Phone className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
-            <p className="font-bold text-base" style={{ color: "hsl(0 70% 50%)" }}>Emergency 911</p>
+            <p className="font-bold text-base" style={{ color: "hsl(var(--status-alert))" }}>Emergency 911</p>
             <p className="text-muted-foreground text-sm">Tap to call for immediate help</p>
           </div>
           <span className="ml-auto text-muted-foreground text-lg">›</span>
@@ -252,10 +258,10 @@ export default function SeniorHome() {
         {/* Calm Sounds */}
         <button
           onClick={() => setShowSound(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card"
+          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card min-h-[48px]"
         >
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "hsl(var(--accent))" }}
           >
             <Music className="w-5 h-5" style={{ color: "hsl(var(--accent-foreground))" }} />
@@ -295,12 +301,12 @@ export default function SeniorHome() {
           <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
             <AlertDialogAction
               onClick={() => emergencyLinkRef.current?.click()}
-              className="w-full h-14 text-lg font-black rounded-xl border-0"
-              style={{ background: "hsl(0 70% 50%)", color: "#fff" }}
+              className="w-full min-h-[48px] h-14 text-lg font-black rounded-xl border-0"
+              style={{ background: "hsl(var(--status-alert))", color: "#fff" }}
             >
               Yes, Call 911
             </AlertDialogAction>
-            <AlertDialogCancel className="w-full h-12 rounded-xl mt-0">
+            <AlertDialogCancel className="w-full min-h-[48px] h-12 rounded-xl mt-0">
               Cancel
             </AlertDialogCancel>
           </AlertDialogFooter>
