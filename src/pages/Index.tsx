@@ -27,8 +27,7 @@ export default function Index() {
     if (profile.role === "caregiver") {
       return <Navigate to="/dashboard" replace />;
     }
-    // Senior stays on / with their own home
-    return <SeniorHome />;
+    return <Navigate to="/home" replace />;
   }
 
   // Not logged in: show landing page
