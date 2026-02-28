@@ -151,7 +151,7 @@ export default function CaregiverDashboard() {
       : [];
 
     const { data: managed } = await supabase
-      .from("managed_seniors" as any)
+      .from("managed_seniors")
       .select("*")
       .eq("caregiver_id", user.id)
       .order("created_at", { ascending: false });

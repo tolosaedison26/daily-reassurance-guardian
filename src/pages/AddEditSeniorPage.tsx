@@ -9,7 +9,7 @@ import BasicInfoStep from "@/components/wizard/BasicInfoStep";
 import ScheduleStep from "@/components/wizard/ScheduleStep";
 import ContactsStep from "@/components/wizard/ContactsStep";
 import ReviewStep from "@/components/wizard/ReviewStep";
-import { defaultFormData, MOCK_SENIOR, type SeniorFormData } from "@/components/wizard/types";
+import { defaultFormData, type SeniorFormData } from "@/components/wizard/types";
 import { ChevronLeft } from "lucide-react";
 
 const STEP_TITLES = [
@@ -26,11 +26,62 @@ export default function AddEditSeniorPage() {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
-  const [data, setData] = useState<SeniorFormData>(isEdit ? MOCK_SENIOR : defaultFormData);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(isEdit ? new Set([0, 1, 2, 3]) : new Set());
+  const [data, setData] = useState<SeniorFormData>(defaultFormData);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+
+  // Load existing senior data when editing
+  useEffect(() => {
+    if (!isEdit || !id || !user) return;
+    const loadSenior = async () => {
+      const { data: senior } = await supabase
+        .from("managed_seniors")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (senior) {
+        const { data: contacts } = await supabase
+          .from("managed_senior_contacts")
+          .select("*")
+          .eq("managed_senior_id", id)
+          .order("sort_order", { ascending: true });
+
+        setData({
+          firstName: senior.first_name,
+          lastName: senior.last_name,
+          phone: senior.phone || "",
+          relationship: senior.relationship || "",
+          dateOfBirth: senior.date_of_birth || "",
+          notes: senior.notes || "",
+          reminderHour: senior.reminder_hour,
+          reminderMinute: senior.reminder_minute,
+          reminderPeriod: senior.reminder_period as "AM" | "PM",
+          timezone: senior.timezone,
+          gracePeriodMinutes: senior.grace_period_minutes,
+          frequency: senior.frequency as "daily" | "weekdays" | "custom",
+          customDays: senior.custom_days || [],
+          moodCheckEnabled: senior.mood_check_enabled,
+          vacationMode: senior.vacation_mode,
+          vacationFrom: senior.vacation_from || "",
+          vacationUntil: senior.vacation_until || "",
+          contacts: (contacts || []).map((c) => ({
+            id: c.id,
+            name: c.name,
+            relationship: c.relationship || "",
+            phone: c.phone || "",
+            email: c.email || "",
+            notifyViaSms: c.notify_via_sms,
+            notifyViaEmail: c.notify_via_email,
+            delayMinutes: c.delay_minutes,
+          })),
+        });
+        setCompletedSteps(new Set([0, 1, 2, 3]));
+      }
+    };
+    loadSenior();
+  }, [isEdit, id, user]);
 
   useEffect(() => {
     if (!dirty || saving) return;
@@ -84,25 +135,45 @@ export default function AddEditSeniorPage() {
     if (!user) { toast({ title: "You must be logged in to save.", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const { data: senior, error: seniorError } = await supabase
-        .from("managed_seniors" as any)
-        .insert({
-          caregiver_id: user.id, first_name: data.firstName, last_name: data.lastName,
-          phone: data.phone || null, relationship: data.relationship || null, date_of_birth: data.dateOfBirth || null,
-          notes: data.notes || null, reminder_hour: data.reminderHour, reminder_minute: data.reminderMinute,
-          reminder_period: data.reminderPeriod, timezone: data.timezone, grace_period_minutes: data.gracePeriodMinutes,
-          frequency: data.frequency, custom_days: data.customDays, mood_check_enabled: data.moodCheckEnabled,
-          vacation_mode: data.vacationMode, vacation_from: data.vacationFrom || null, vacation_until: data.vacationUntil || null,
-        } as any)
-        .select().single();
-      if (seniorError) throw seniorError;
-      if (data.contacts.length > 0 && senior) {
+      const payload = {
+        caregiver_id: user.id, first_name: data.firstName, last_name: data.lastName,
+        phone: data.phone || null, relationship: data.relationship || null, date_of_birth: data.dateOfBirth || null,
+        notes: data.notes || null, reminder_hour: data.reminderHour, reminder_minute: data.reminderMinute,
+        reminder_period: data.reminderPeriod, timezone: data.timezone, grace_period_minutes: data.gracePeriodMinutes,
+        frequency: data.frequency, custom_days: data.customDays, mood_check_enabled: data.moodCheckEnabled,
+        vacation_mode: data.vacationMode, vacation_from: data.vacationFrom || null, vacation_until: data.vacationUntil || null,
+      };
+
+      let seniorId: string;
+
+      if (isEdit && id) {
+        // UPDATE existing senior
+        const { error: updateError } = await supabase
+          .from("managed_seniors")
+          .update(payload)
+          .eq("id", id);
+        if (updateError) throw updateError;
+        seniorId = id;
+
+        // Delete existing contacts and re-insert
+        await supabase.from("managed_senior_contacts").delete().eq("managed_senior_id", id);
+      } else {
+        // INSERT new senior
+        const { data: senior, error: seniorError } = await supabase
+          .from("managed_seniors")
+          .insert(payload)
+          .select().single();
+        if (seniorError) throw seniorError;
+        seniorId = senior.id;
+      }
+
+      if (data.contacts.length > 0) {
         const contactRows = data.contacts.map((c, i) => ({
-          managed_senior_id: (senior as any).id, name: c.name, relationship: c.relationship || null,
+          managed_senior_id: seniorId, name: c.name, relationship: c.relationship || null,
           phone: c.phone || null, email: c.email || null, notify_via_sms: c.notifyViaSms,
           notify_via_email: c.notifyViaEmail, delay_minutes: c.delayMinutes, sort_order: i,
         }));
-        const { error: contactError } = await supabase.from("managed_senior_contacts" as any).insert(contactRows as any);
+        const { error: contactError } = await supabase.from("managed_senior_contacts").insert(contactRows);
         if (contactError) throw contactError;
       }
       setDirty(false);
