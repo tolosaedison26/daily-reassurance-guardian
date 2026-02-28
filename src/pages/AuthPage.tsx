@@ -35,7 +35,8 @@ export default function AuthPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user && profile) {
-      const from = (location.state as any)?.from || "/dashboard";
+      const defaultRoute = profile.role === "senior" ? "/home" : "/dashboard";
+      const from = (location.state as any)?.from || defaultRoute;
       navigate(from, { replace: true });
     }
   }, [authLoading, user, profile, navigate, location.state]);

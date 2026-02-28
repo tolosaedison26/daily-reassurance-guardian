@@ -3,9 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: "senior" | "caregiver";
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
@@ -25,6 +26,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user || !profile) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Role-based redirect: send seniors to /home, caregivers to /dashboard
+  if (requiredRole && profile.role !== requiredRole) {
+    const redirectTo = profile.role === "senior" ? "/home" : "/dashboard";
+    return <Navigate to={redirectTo} replace />;
   }
 
   return <>{children}</>;
