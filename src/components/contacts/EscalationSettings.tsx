@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, AlertTriangle } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +7,6 @@ import { Input } from "@/components/ui/input";
 interface EscalationSettingsProps {
   delayMinutes: number;
   setDelayMinutes: (v: number) => void;
-  loopEnabled: boolean;
-  setLoopEnabled: (v: boolean) => void;
-  enable911: boolean;
-  setEnable911: (v: boolean) => void;
   quietHoursEnabled: boolean;
   setQuietHoursEnabled: (v: boolean) => void;
   quietFrom: string;
@@ -48,8 +44,8 @@ export default function EscalationSettings(props: EscalationSettingsProps) {
         <div className="mt-5 space-y-6">
           {/* Delay between contacts */}
           <div>
-            <p className="font-bold text-sm mb-1">Time between each escalation step</p>
-            <p className="text-xs text-muted-foreground mb-3">How long to wait for a response before notifying the next contact</p>
+            <p className="font-bold text-sm mb-1">How long to wait before notifying the next contact</p>
+            <p className="text-xs text-muted-foreground mb-3">Time between each escalation step</p>
             <div className="flex flex-wrap gap-2">
               {delayOptions.map((opt) => (
                 <button
@@ -67,50 +63,13 @@ export default function EscalationSettings(props: EscalationSettingsProps) {
             </div>
           </div>
 
-          {/* Loop escalation */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-bold text-sm">Restart escalation loop if no one responds</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {props.loopEnabled
-                  ? "We'll restart from Contact 1 after all contacts have been tried"
-                  : "Escalation stops after the last contact is notified"}
-              </p>
-            </div>
-            <Switch checked={props.loopEnabled} onCheckedChange={props.setLoopEnabled} />
-          </div>
-
-          {/* 911 */}
-          <div>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-bold text-sm">Enable 911 last-resort alert</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {props.enable911
-                    ? "If no contact responds, we'll display a prompt to call 911. We do not auto-call emergency services."
-                    : "Disabled"}
-                </p>
-              </div>
-              <Switch checked={props.enable911} onCheckedChange={props.setEnable911} />
-            </div>
-            {props.enable911 && (
-              <div
-                className="mt-3 rounded-xl p-3 flex items-start gap-2 text-xs"
-                style={{ background: "hsl(var(--status-alert) / 0.08)", color: "hsl(var(--status-alert))" }}
-              >
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>This feature reminds you to call 911 — it does not make the call automatically.</span>
-              </div>
-            )}
-          </div>
-
           {/* Quiet hours */}
           <div>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-bold text-sm">Quiet Hours</p>
+                <p className="font-bold text-sm">Don't send alerts during these hours</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Contacts won't be notified during these hours (held until quiet hours end)
+                  Contacts won't be notified during quiet hours (held until they end)
                 </p>
               </div>
               <Switch checked={props.quietHoursEnabled} onCheckedChange={props.setQuietHoursEnabled} />

@@ -11,6 +11,7 @@ import SeniorMoodTrendsCard from "@/components/senior-profile/SeniorMoodTrendsCa
 import ActivityTimeline from "@/components/senior-profile/ActivityTimeline";
 import CaregiverNotes from "@/components/senior-profile/CaregiverNotes";
 import ProfileSettingsSummary from "@/components/senior-profile/ProfileSettingsSummary";
+import SetupChecklist from "@/components/senior-profile/SetupChecklist";
 import { MOCK_SENIOR } from "@/components/senior-profile/mock-data";
 
 type ProfileStatus = "checked" | "awaiting" | "missed" | "none";
@@ -159,9 +160,18 @@ export default function SeniorProfilePage() {
   const activeDays = senior.frequency === "daily" ? "Every day" : senior.custom_days?.length ? senior.custom_days.join(", ") : "Every day";
   const seniorId = id || senior.id;
 
+  const hasCheckIn = checkInStatus === "checked";
+
   return (
     <div className="space-y-5">
-      {/* Breadcrumbs handled by AppShell */}
+      {/* Setup checklist */}
+      <SetupChecklist
+        seniorId={seniorId}
+        profileCreated={true}
+        scheduleSet={true}
+        contactAdded={contactCount > 0}
+        testCheckinDone={hasCheckIn}
+      />
 
       <SeniorProfileHeader
         firstName={senior.first_name} lastName={senior.last_name}

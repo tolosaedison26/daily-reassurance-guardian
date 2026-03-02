@@ -3,17 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/ui/StatusBadge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { LogOut, Music, Settings, Bell, Phone, ChevronLeft } from "lucide-react";
+import { LogOut, Music, Settings, Bell, ChevronLeft } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
@@ -23,6 +13,7 @@ import InviteCodeCard from "@/components/InviteCodeCard";
 import AccountSettingsPage from "@/pages/AccountSettingsPage";
 import MoodSelector from "@/components/senior/MoodSelector";
 import CheckinSuccessScreen from "@/components/senior/CheckinSuccessScreen";
+import SeniorWalkthrough from "@/components/senior/SeniorWalkthrough";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -38,14 +29,18 @@ export default function SeniorHome() {
   const [loading, setLoading] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
-  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
   const [showMoodSelector, setShowMoodSelector] = useState(false);
-  const emergencyLinkRef = useRef<HTMLAnchorElement>(null);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   useEffect(() => {
     if (user) {
       loadTodayStatus();
       loadReminderSettings();
+      // Check if first visit
+      const walkthroughDone = localStorage.getItem(`walkthrough_completed_${user.id}`);
+      if (!walkthroughDone) {
+        setShowWalkthrough(true);
+      }
     }
   }, [user]);
 
@@ -85,7 +80,6 @@ export default function SeniorHome() {
 
   const handleMoodSelect = (mood: "great" | "okay" | "bad") => {
     setSelectedMood(mood);
-    // If not yet checked in, treat mood tap as check-in + mood
     if (status !== "checked") {
       handleCheckIn(mood);
     }
@@ -96,7 +90,25 @@ export default function SeniorHome() {
     setShowMoodSelector(false);
   }, []);
 
+  const handleWalkthroughComplete = () => {
+    if (user) {
+      localStorage.setItem(`walkthrough_completed_${user.id}`, "true");
+    }
+    setShowWalkthrough(false);
+  };
+
   const firstName = profile?.full_name?.split(" ")[0] || "Friend";
+
+  // Show walkthrough overlay
+  if (showWalkthrough) {
+    return (
+      <SeniorWalkthrough
+        firstName={firstName}
+        onComplete={handleWalkthroughComplete}
+        onCheckIn={() => handleCheckIn()}
+      />
+    );
+  }
 
   if (showAccountSettings) return <AccountSettingsPage onBack={() => setShowAccountSettings(false)} />;
   if (showSound) return <SoundPlayer onBack={() => setShowSound(false)} />;
@@ -145,7 +157,7 @@ export default function SeniorHome() {
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center px-4 sm:px-5 pt-6 pb-24 gap-5">
 
-        {/* Greeting — large for seniors */}
+        {/* Greeting */}
         <div className="w-full text-center">
           <h1 className="font-black text-foreground leading-tight" style={{ fontSize: "28px", lineHeight: "36px" }}>
             {isChecked ? `You're all set, ${firstName}!` : `Good morning, ${firstName}!`} 👋
@@ -162,7 +174,7 @@ export default function SeniorHome() {
           />
         </div>
 
-        {/* Overdue warning (soft amber, not alarming) */}
+        {/* Overdue warning */}
         {isPending && (
           <div
             className="w-full rounded-2xl p-4 border text-center"
@@ -202,7 +214,7 @@ export default function SeniorHome() {
           </div>
         ) : (
           <>
-            {/* BIG CHECK-IN BUTTON — 80px tall, full width */}
+            {/* BIG CHECK-IN BUTTON */}
             <Button
               onClick={() => {
                 setShowMoodSelector(true);
@@ -220,7 +232,7 @@ export default function SeniorHome() {
               {loading ? "Checking in…" : "✓  I'M OKAY"}
             </Button>
 
-            {/* Mood selector — always visible below CTA */}
+            {/* Mood selector */}
             <MoodSelector
               selected={selectedMood}
               onSelect={handleMoodSelect}
@@ -239,31 +251,7 @@ export default function SeniorHome() {
         {/* Invite code */}
         {user && <InviteCodeCard seniorId={user.id} />}
 
-        {/* Emergency 911 */}
-        <a ref={emergencyLinkRef} href="tel:911" className="hidden" aria-hidden="true" />
-        <button
-          onClick={() => setShowEmergencyDialog(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl border shadow-card"
-          style={{
-            background: "hsl(var(--status-alert) / 0.06)",
-            borderColor: "hsl(var(--status-alert) / 0.25)",
-            minHeight: "64px",
-          }}
-        >
-          <div
-            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "hsl(var(--status-alert))" }}
-          >
-            <Phone className="w-5 h-5 text-white" />
-          </div>
-          <div className="text-left">
-            <p className="font-bold" style={{ fontSize: "18px", color: "hsl(var(--status-alert))" }}>Emergency 911</p>
-            <p className="text-muted-foreground" style={{ fontSize: "16px" }}>Tap to call for immediate help</p>
-          </div>
-          <span className="ml-auto text-muted-foreground text-lg">›</span>
-        </button>
-
-        {/* Emergency Contacts */}
+        {/* Emergency Contacts - read-only for seniors */}
         {user && <EmergencyContacts userId={user.id} />}
 
         {/* Calm Sounds */}
@@ -299,31 +287,6 @@ export default function SeniorHome() {
           onClose={() => setShowActivity(false)}
         />
       )}
-
-      <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-xl">
-              🚨 Call 911?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-base">
-              This will dial emergency services. Only use this for real emergencies.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-            <AlertDialogAction
-              onClick={() => emergencyLinkRef.current?.click()}
-              className="w-full min-h-[48px] h-14 text-lg font-black rounded-xl border-0"
-              style={{ background: "hsl(var(--status-alert))", color: "#fff" }}
-            >
-              Yes, Call 911
-            </AlertDialogAction>
-            <AlertDialogCancel className="w-full min-h-[48px] h-12 rounded-xl mt-0">
-              Cancel
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

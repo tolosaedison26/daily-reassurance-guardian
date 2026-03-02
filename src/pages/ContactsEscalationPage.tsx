@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, UserPlus, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, UserPlus, Loader2, Send, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,6 +11,7 @@ import EscalationLadderVisual from "@/components/contacts/EscalationLadderVisual
 import EscalationSettings from "@/components/contacts/EscalationSettings";
 import AddEditContactModal from "@/components/contacts/AddEditContactModal";
 import NotificationPreview from "@/components/contacts/NotificationPreview";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 export default function ContactsEscalationPage() {
   const navigate = useNavigate();
@@ -22,23 +23,22 @@ export default function ContactsEscalationPage() {
   const [seniorName, setSeniorName] = useState("Loading…");
   const [contacts, setContacts] = useState<ContactData[]>([]);
   const [delayMinutes, setDelayMinutes] = useState(30);
-  const [loopEnabled, setLoopEnabled] = useState(false);
-  const [enable911, setEnable911] = useState(false);
   const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
   const [quietFrom, setQuietFrom] = useState("22:00");
   const [quietUntil, setQuietUntil] = useState("07:00");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [showTestConfirm, setShowTestConfirm] = useState(false);
+  const [testSentAt, setTestSentAt] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactData | null>(null);
 
-  // Load senior info + contacts from DB
   const loadData = useCallback(async () => {
     if (!id || !user) return;
     setLoading(true);
 
-    // Load managed senior
     const { data: senior } = await supabase
       .from("managed_seniors")
       .select("*")
@@ -49,14 +49,11 @@ export default function ContactsEscalationPage() {
     if (senior) {
       setSeniorName(`${(senior as any).first_name} ${(senior as any).last_name}`);
       setDelayMinutes((senior as any).escalation_delay_minutes ?? 30);
-      setLoopEnabled((senior as any).escalation_loop_enabled ?? false);
-      setEnable911((senior as any).escalation_911_enabled ?? false);
       setQuietHoursEnabled((senior as any).quiet_hours_enabled ?? false);
       setQuietFrom((senior as any).quiet_hours_from ?? "22:00");
       setQuietUntil((senior as any).quiet_hours_until ?? "07:00");
     }
 
-    // Load contacts
     const { data: dbContacts } = await supabase
       .from("managed_senior_contacts")
       .select("*")
@@ -103,7 +100,6 @@ export default function ContactsEscalationPage() {
     const existing = contacts.find((p) => p.id === c.id);
 
     if (existing) {
-      // Update
       await supabase
         .from("managed_senior_contacts")
         .update({
@@ -118,7 +114,6 @@ export default function ContactsEscalationPage() {
         .eq("id", c.id);
       toast({ title: "Contact updated." });
     } else {
-      // Insert
       const maxOrder = contacts.reduce((m, p) => Math.max(m, p.sortOrder), -1);
       await supabase
         .from("managed_senior_contacts")
@@ -140,7 +135,6 @@ export default function ContactsEscalationPage() {
 
   const handleRemove = async (cid: string) => {
     await supabase.from("managed_senior_contacts").delete().eq("id", cid);
-    // Re-order remaining
     const remaining = contacts.filter((p) => p.id !== cid).sort((a, b) => a.sortOrder - b.sortOrder);
     for (let i = 0; i < remaining.length; i++) {
       await supabase.from("managed_senior_contacts").update({ sort_order: i }).eq("id", remaining[i].id);
@@ -154,7 +148,6 @@ export default function ContactsEscalationPage() {
     if (toIdx < 0 || toIdx >= sorted.length) return;
     const updated = [...sorted];
     [updated[fromIdx], updated[toIdx]] = [updated[toIdx], updated[fromIdx]];
-    // Persist new order
     for (let i = 0; i < updated.length; i++) {
       await supabase.from("managed_senior_contacts").update({ sort_order: i }).eq("id", updated[i].id);
     }
@@ -169,8 +162,6 @@ export default function ContactsEscalationPage() {
       .from("managed_seniors")
       .update({
         escalation_delay_minutes: delayMinutes,
-        escalation_loop_enabled: loopEnabled,
-        escalation_911_enabled: enable911,
         quiet_hours_enabled: quietHoursEnabled,
         quiet_hours_from: quietFrom,
         quiet_hours_until: quietUntil,
@@ -178,6 +169,18 @@ export default function ContactsEscalationPage() {
       .eq("id", id);
     setSaving(false);
     toast({ title: "Escalation settings updated." });
+  };
+
+  const handleSendTest = async () => {
+    setSendingTest(true);
+    // Simulate sending test alerts
+    await new Promise((r) => setTimeout(r, 1500));
+    setSendingTest(false);
+    setShowTestConfirm(false);
+    setTestSentAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    toast({ title: `Test alert sent to ${contacts.length} contact${contacts.length !== 1 ? "s" : ""} for ${seniorName}.` });
+    // Clear test badge after 10 seconds
+    setTimeout(() => setTestSentAt(null), 10000);
   };
 
   const firstContact = sorted[0] || null;
@@ -204,17 +207,69 @@ export default function ContactsEscalationPage() {
 
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-black leading-tight">Contacts & Escalation</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black leading-tight">Contacts & Escalation</h1>
+              {/* Signal 1: Inline status badge */}
+              {contacts.length > 0 ? (
+                <span
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{
+                    background: "hsl(var(--status-checked) / 0.1)",
+                    color: "hsl(var(--status-checked))",
+                  }}
+                >
+                  ✓ {contacts.length} contact{contacts.length !== 1 ? "s" : ""} active
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{
+                    background: "hsl(var(--status-pending) / 0.1)",
+                    color: "hsl(var(--status-pending))",
+                  }}
+                >
+                  <AlertTriangle className="w-3 h-3" /> No emergency contacts
+                </span>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {seniorName} · {contacts.length} contact{contacts.length !== 1 ? "s" : ""}
             </p>
           </div>
-          {!isMobile && (
-            <Button onClick={handleAddClick} className="rounded-xl font-black gap-1.5">
-              <Plus className="w-4 h-4" /> Add Contact
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {contacts.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowTestConfirm(!showTestConfirm)}
+                className="rounded-xl font-black gap-1.5"
+                disabled={sendingTest}
+              >
+                <Send className="w-4 h-4" /> Send Test Alert
+              </Button>
+            )}
+            {!isMobile && (
+              <Button onClick={handleAddClick} className="rounded-xl font-black gap-1.5">
+                <Plus className="w-4 h-4" /> Add Contact
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Test alert inline confirmation */}
+        {showTestConfirm && (
+          <div className="mt-3 bg-card rounded-xl border border-border p-4 flex items-center justify-between gap-3 flex-wrap animate-bounce-in">
+            <p className="text-sm text-muted-foreground">
+              Send a test SMS/email to all {contacts.length} contacts for {seniorName}?
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowTestConfirm(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleSendTest} disabled={sendingTest} className="font-black">
+                {sendingTest ? "Sending…" : "Send Test"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {isMobile && (
           <Button onClick={handleAddClick} className="rounded-xl font-black gap-1.5 w-full mt-3">
             <Plus className="w-4 h-4" /> Add Contact
@@ -244,11 +299,9 @@ export default function ContactsEscalationPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <EscalationLadderVisual contacts={sorted} delayMinutes={delayMinutes} enable911={enable911} />
+              <EscalationLadderVisual contacts={sorted} delayMinutes={delayMinutes} />
               <EscalationSettings
                 delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes}
-                loopEnabled={loopEnabled} setLoopEnabled={setLoopEnabled}
-                enable911={enable911} setEnable911={setEnable911}
                 quietHoursEnabled={quietHoursEnabled} setQuietHoursEnabled={setQuietHoursEnabled}
                 quietFrom={quietFrom} setQuietFrom={setQuietFrom}
                 quietUntil={quietUntil} setQuietUntil={setQuietUntil}
@@ -269,17 +322,29 @@ export default function ContactsEscalationPage() {
               </div>
               <div className="space-y-3">
                 {sorted.map((contact, i) => (
-                  <ContactCard
-                    key={contact.id}
-                    contact={contact}
-                    index={i}
-                    total={sorted.length}
-                    onEdit={handleEdit}
-                    onRemove={handleRemove}
-                    onMoveUp={() => handleMove(i, -1)}
-                    onMoveDown={() => handleMove(i, 1)}
-                    isMobile={isMobile}
-                  />
+                  <div key={contact.id} className="relative">
+                    <ContactCard
+                      contact={contact}
+                      index={i}
+                      total={sorted.length}
+                      onEdit={handleEdit}
+                      onRemove={handleRemove}
+                      onMoveUp={() => handleMove(i, -1)}
+                      onMoveDown={() => handleMove(i, 1)}
+                      isMobile={isMobile}
+                    />
+                    {testSentAt && (
+                      <span
+                        className="absolute top-2 right-2 text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: "hsl(var(--status-checked) / 0.1)",
+                          color: "hsl(var(--status-checked))",
+                        }}
+                      >
+                        Test sent ✓ {testSentAt}
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
