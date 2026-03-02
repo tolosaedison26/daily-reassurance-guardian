@@ -17,6 +17,8 @@ import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TodayOverviewBanner from "@/components/senior/TodayOverviewBanner";
 import SetupNudgeBanner from "@/components/SetupNudgeBanner";
+import SetupWizard from "@/components/wizard/SetupWizard";
+import SetupComplete from "@/components/wizard/SetupComplete";
 
 interface ManagedSeniorData {
   id: string;
@@ -44,41 +46,25 @@ interface SeniorStatus {
   last_check_in: string | null;
   is_managed?: boolean;
   relationship?: string | null;
+  contact_count?: number;
 }
 
-/** Derive status at render time from data - never cache the string */
 function deriveManagedStatus(ms: ManagedSeniorData, hasCheckedInToday: boolean): "safe" | "pending" | "missed" | "paused" | "none" {
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
-
-  // 1. Check vacation/pause
   if (ms.vacation_mode && ms.vacation_from && ms.vacation_until) {
-    if (todayStr >= ms.vacation_from && todayStr <= ms.vacation_until) {
-      return "paused";
-    }
-    // Pause expired — fall through to normal logic
+    if (todayStr >= ms.vacation_from && todayStr <= ms.vacation_until) return "paused";
   }
-
-  // 2. Checked in today
   if (hasCheckedInToday) return "safe";
-
-  // 3. Compute reminder time and grace period
   const reminderHour = parseInt(ms.reminder_hour || "9");
   const isPM = ms.reminder_period === "PM";
   const actualHour = isPM && reminderHour !== 12 ? reminderHour + 12 : (!isPM && reminderHour === 12 ? 0 : reminderHour);
   const reminderMinute = parseInt(ms.reminder_minute || "0");
   const graceMinutes = ms.grace_period_minutes || 60;
-
   const nowMinutes = today.getHours() * 60 + today.getMinutes();
   const reminderMinutes = actualHour * 60 + reminderMinute;
-
-  // Before reminder time
   if (nowMinutes < reminderMinutes) return "none";
-
-  // Within grace period
   if (nowMinutes < reminderMinutes + graceMinutes) return "pending";
-
-  // Grace period expired
   return "missed";
 }
 
@@ -100,8 +86,34 @@ export default function CaregiverDashboard() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const { subscribe } = usePushNotifications();
 
+  // Onboarding wizard state
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardComplete, setWizardComplete] = useState(false);
+  const [wizardData, setWizardData] = useState<any>(null);
+  const [wizardSaving, setWizardSaving] = useState(false);
+
+  const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(() => {
+    const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+    return new Set(stored as string[]);
+  });
+
+  useEffect(() => {
+    const syncResolved = () => {
+      const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
+      setResolvedAlerts(new Set(stored as string[]));
+    };
+    window.addEventListener("focus", syncResolved);
+    syncResolved();
+    return () => window.removeEventListener("focus", syncResolved);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
+    // Check if onboarding is needed
+    const onboardingDone = localStorage.getItem(`onboarding_complete_${user.id}`);
+    if (!onboardingDone) {
+      setShowWizard(true);
+    }
     loadSeniors();
     if ("Notification" in window) {
       setNotifPermission(Notification.permission);
@@ -119,7 +131,6 @@ export default function CaregiverDashboard() {
       })
       .subscribe();
 
-    // Re-derive on focus
     const handleFocus = () => loadSeniors();
     window.addEventListener("focus", handleFocus);
 
@@ -159,7 +170,6 @@ export default function CaregiverDashboard() {
 
     const managedStatuses: SeniorStatus[] = await Promise.all(
       (managed || []).map(async (ms: any) => {
-        // Check if this managed senior has checked in today
         let hasCheckedIn = false;
         if (ms.claimed_by) {
           const today = new Date().toISOString().split("T")[0];
@@ -171,6 +181,12 @@ export default function CaregiverDashboard() {
             .maybeSingle();
           hasCheckedIn = !!checkIn;
         }
+        // Count contacts for this managed senior
+        const { count } = await supabase
+          .from("managed_senior_contacts")
+          .select("id", { count: "exact", head: true })
+          .eq("managed_senior_id", ms.id);
+
         const status = deriveManagedStatus(ms as ManagedSeniorData, hasCheckedIn);
         return {
           connection_id: ms.id,
@@ -180,11 +196,11 @@ export default function CaregiverDashboard() {
           last_check_in: null,
           is_managed: true,
           relationship: ms.relationship,
+          contact_count: count || 0,
         };
       })
     );
 
-    // Sort by urgency: missed > pending > paused > none > safe
     const urgency: Record<string, number> = { missed: 0, pending: 1, paused: 2, none: 3, safe: 4 };
     const allSeniors = [...connectedStatuses, ...managedStatuses].sort(
       (a, b) => (urgency[a.status] ?? 3) - (urgency[b.status] ?? 3)
@@ -193,6 +209,87 @@ export default function CaregiverDashboard() {
     setSeniors(allSeniors);
     setLoading(false);
   };
+
+  const handleWizardComplete = async (data: any) => {
+    if (!user) return;
+    setWizardSaving(true);
+    // Create managed senior
+    const { data: senior, error } = await supabase
+      .from("managed_seniors")
+      .insert({
+        caregiver_id: user.id,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone,
+        relationship: data.relationship,
+        reminder_hour: data.reminderHour,
+        reminder_minute: data.reminderMinute,
+        reminder_period: data.reminderPeriod,
+        timezone: data.timezone,
+        grace_period_minutes: data.gracePeriodMinutes,
+      })
+      .select()
+      .single();
+
+    if (senior && data.contacts.length > 0) {
+      const contactInserts = data.contacts.map((c: any, i: number) => ({
+        managed_senior_id: senior.id,
+        name: c.name,
+        relationship: c.relationship || null,
+        phone: c.phone || null,
+        email: c.email || null,
+        notify_via_sms: c.notifyViaSms,
+        notify_via_email: c.notifyViaEmail,
+        sort_order: i,
+        delay_minutes: i === 0 ? 0 : i === 1 ? 30 : 60,
+      }));
+      await supabase.from("managed_senior_contacts").insert(contactInserts);
+    }
+
+    setWizardData({ ...data, seniorId: senior?.id });
+    setWizardSaving(false);
+    setWizardComplete(true);
+    setShowWizard(false);
+  };
+
+  const handleWizardSkip = () => {
+    if (user) localStorage.setItem(`onboarding_complete_${user.id}`, "true");
+    setShowWizard(false);
+  };
+
+  const handleWizardFinish = () => {
+    if (user) localStorage.setItem(`onboarding_complete_${user.id}`, "true");
+    setWizardComplete(false);
+    setWizardData(null);
+    loadSeniors();
+  };
+
+  // Show wizard
+  if (showWizard) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background">
+        <SetupWizard
+          onComplete={handleWizardComplete}
+          onSkip={handleWizardSkip}
+          saving={wizardSaving}
+        />
+      </div>
+    );
+  }
+
+  // Show completion screen
+  if (wizardComplete && wizardData) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background">
+        <SetupComplete
+          seniorName={`${wizardData.firstName} ${wizardData.lastName}`}
+          reminderTime={`${wizardData.reminderHour}:${wizardData.reminderMinute} ${wizardData.reminderPeriod}`}
+          contactCount={wizardData.contacts.length}
+          onGoToDashboard={handleWizardFinish}
+        />
+      </div>
+    );
+  }
 
   const handleConnectWithCode = async () => {
     if (!user || !inviteCode.trim()) return;
@@ -231,21 +328,7 @@ export default function CaregiverDashboard() {
   const pendingCount = seniors.filter((s) => s.status === "pending" || s.status === "none").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
-  // Demo alert data
-  const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(() => {
-    const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
-    return new Set(stored as string[]);
-  });
 
-  useEffect(() => {
-    const syncResolved = () => {
-      const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
-      setResolvedAlerts(new Set(stored as string[]));
-    };
-    window.addEventListener("focus", syncResolved);
-    syncResolved();
-    return () => window.removeEventListener("focus", syncResolved);
-  }, []);
 
   const allDemoAlerts = [
     {
@@ -261,7 +344,6 @@ export default function CaregiverDashboard() {
   const alertCount = demoAlerts.length;
   const missedCount = seniors.filter(s => s.status === "missed").length + alertCount;
 
-  // Status badge helper
   const getStatusBadge = (s: SeniorStatus) => {
     switch (s.status) {
       case "safe": return "safe" as const;
@@ -272,7 +354,6 @@ export default function CaregiverDashboard() {
     }
   };
 
-  // Filter function
   const filterSenior = (s: SeniorStatus) => {
     if (!statusFilter || statusFilter === "total") return true;
     if (statusFilter === "safe") return s.status === "safe";
@@ -280,6 +361,11 @@ export default function CaregiverDashboard() {
     if (statusFilter === "alert") return s.status === "missed";
     return true;
   };
+
+  // Seniors without contacts for nudge banner
+  const seniorsWithoutContacts = seniors
+    .filter(s => s.is_managed && (s.contact_count === 0 || s.contact_count === undefined))
+    .map(s => ({ id: s.senior_id, name: s.full_name }));
 
   return (
     <div className="space-y-5">
@@ -292,12 +378,8 @@ export default function CaregiverDashboard() {
       </div>
 
       {/* Setup nudge banner for seniors without contacts */}
-      {!loading && seniors.filter(s => s.is_managed).length > 0 && (
-        <SetupNudgeBanner
-          seniorsWithoutContacts={seniors
-            .filter(s => s.is_managed)
-            .map(s => ({ id: s.senior_id, name: s.full_name }))}
-        />
+      {!loading && seniorsWithoutContacts.length > 0 && (
+        <SetupNudgeBanner seniorsWithoutContacts={seniorsWithoutContacts} />
       )}
 
       {/* Today's Overview Banner */}
@@ -529,6 +611,12 @@ export default function CaregiverDashboard() {
                         <p className="font-black text-lg leading-tight truncate text-foreground">{senior.full_name}</p>
                         {senior.relationship && (
                           <span className="text-xs text-muted-foreground">· {senior.relationship}</span>
+                        )}
+                        {/* Amber warning if no contacts */}
+                        {senior.is_managed && senior.contact_count === 0 && (
+                          <span title="No emergency contacts set up" className="shrink-0">
+                            <AlertTriangle className="w-4 h-4" style={{ color: "hsl(var(--status-pending))" }} />
+                          </span>
                         )}
                       </div>
                       {senior.status === "safe" && senior.last_check_in ? (
