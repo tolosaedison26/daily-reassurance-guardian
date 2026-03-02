@@ -3,6 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
 import TopHeader from "./TopHeader";
+import Breadcrumbs from "./Breadcrumbs";
 
 function useIsTablet() {
   const [isTablet, setIsTablet] = useState(false);
@@ -23,9 +24,10 @@ function useIsTablet() {
 interface AppShellProps {
   children: ReactNode;
   pageTitle?: string;
+  alertCount?: number;
 }
 
-export default function AppShell({ children, pageTitle }: AppShellProps) {
+export default function AppShell({ children, pageTitle, alertCount }: AppShellProps) {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
 
@@ -38,10 +40,11 @@ export default function AppShell({ children, pageTitle }: AppShellProps) {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <TopHeader pageTitle={pageTitle} />
+        <TopHeader pageTitle={pageTitle} alertCount={alertCount} />
 
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-24 lg:pb-8">
           <div className="max-w-5xl mx-auto w-full">
+            <Breadcrumbs />
             {children}
           </div>
         </main>
