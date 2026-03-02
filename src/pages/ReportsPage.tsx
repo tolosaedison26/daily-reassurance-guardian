@@ -1,76 +1,64 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Mail, BarChart2, Loader2 } from "lucide-react";
 import { ReportsHelpButton } from "@/components/HelpModalsContent";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import WeeklyStatsRow from "@/components/WeeklyStatsRow";
-import CheckinRatesCard from "@/components/CheckinRatesCard";
-import MoodTrendsCard from "@/components/MoodTrendsCard";
-import SeniorSummaryCard from "@/components/SeniorSummaryCard";
-import ComposeMessageModal from "@/components/ComposeMessageModal";
+import { supabase } from "@/integrations/supabase/client";
+import EmptyState from "@/components/ui/EmptyState";
 
-// --- Mock data ---
-function getSeniorRates(offset: number) {
-  const jitter = Math.abs(offset) % 5;
-  return [
-    { name: "Margaret Ross", rate: Math.min(100, 95 - jitter * 3), mood: jitter > 2 ? "😐" : "😊", email: "margaret.ross@email.com" },
-    { name: "Frank Johnson", rate: Math.min(100, 86 + jitter * 2), mood: "😐", email: "frank.johnson@email.com" },
-    { name: "Harold Chen", rate: Math.min(100, 71 - jitter * 5), mood: jitter > 1 ? "😔" : "😐", email: "harold.chen@email.com" },
-    { name: "Dorothy Wilson", rate: Math.min(100, 43 + jitter * 8), mood: jitter > 3 ? "😐" : "😔", email: "dorothy.wilson@email.com" },
-  ];
+interface SeniorData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  reminder_hour: string;
+  reminder_minute: string;
+  reminder_period: string;
+  grace_period_minutes: number;
+  mood_check_enabled: boolean;
 }
 
-type MoodValue = "great" | "okay" | "bad" | null;
+interface CheckInRecord {
+  check_date: string;
+  checked_in_at: string;
+  senior_id: string;
+}
 
-const moodData: { name: string; days: MoodValue[]; trending: string; trendEmoji: string }[] = [
-  { name: "Margaret Ross", days: ["great", "great", "great", "okay", "great", "great", null], trending: "Trending", trendEmoji: "😊" },
-  { name: "Frank Johnson", days: ["great", "okay", "great", "great", "okay", "great", "great"], trending: "Trending", trendEmoji: "😊" },
-  { name: "Harold Chen", days: ["okay", null, "great", "okay", "okay", null, "okay"], trending: "Trending", trendEmoji: "😐" },
-  { name: "Dorothy Wilson", days: ["bad", null, "bad", "okay", "bad", null, "bad"], trending: "Trending", trendEmoji: "😔" },
-];
-
-type DayStatus = "checked" | "missed" | "none";
-
-const seniorSummaries: {
-  id: string; name: string; age: number; initials: string; streak: number; weekRate: number;
-  days: DayStatus[]; avgResponseTime: string; avgMoodScore: string;
-}[] = [
-  { id: "demo-margaret", name: "Margaret Ross", age: 78, initials: "MR", streak: 47, weekRate: 95, days: ["checked", "checked", "checked", "checked", "checked", "checked", "none"], avgResponseTime: "2 min", avgMoodScore: "😊 1.1 avg mood score this week" },
-  { id: "demo-frank", name: "Frank Johnson", age: 82, initials: "FJ", streak: 12, weekRate: 86, days: ["checked", "checked", "checked", "checked", "missed", "checked", "checked"], avgResponseTime: "6 min", avgMoodScore: "😊 1.3 avg mood score this week" },
-  { id: "demo-harold", name: "Harold Chen", age: 75, initials: "HC", streak: 3, weekRate: 71, days: ["checked", "none", "checked", "checked", "missed", "none", "checked"], avgResponseTime: "11 min", avgMoodScore: "😐 2.0 avg mood score this week" },
-  { id: "demo-dorothy", name: "Dorothy Wilson", age: 75, initials: "DW", streak: 0, weekRate: 43, days: ["checked", "missed", "checked", "missed", "missed", "missed", "missed"], avgResponseTime: "—", avgMoodScore: "😔 2.7 avg mood score this week" },
-];
-
-function getWeekLabel(offset: number) {
+function getWeekRange(offset: number) {
   const now = new Date();
   const start = new Date(now);
   start.setDate(now.getDate() - now.getDay() + 1 + offset * 7);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
+function getWeekLabel(offset: number) {
+  const { start, end } = getWeekRange(offset);
   const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-// Persistent mark-safe helpers
-function getMarkedSafeKey(seniorId: string) {
-  const today = new Date().toISOString().split("T")[0];
-  return `marked_safe_${today}_${seniorId}`;
-}
+type DayStatus = "checked" | "missed" | "none";
 
-function isMarkedSafe(seniorId: string): boolean {
-  return localStorage.getItem(getMarkedSafeKey(seniorId)) === "true";
-}
-
-function markSafe(seniorId: string) {
-  localStorage.setItem(getMarkedSafeKey(seniorId), "true");
-  // Also sync with sessionStorage for dashboard
-  const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
-  if (!existing.includes("dorothy-attention")) {
-    existing.push("dorothy-attention");
-    sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
+function getDayStatuses(checkDates: Set<string>, weekStart: Date): DayStatus[] {
+  const days: DayStatus[] = [];
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    const dateStr = d.toISOString().split("T")[0];
+    if (d > today) {
+      days.push("none");
+    } else if (checkDates.has(dateStr)) {
+      days.push("checked");
+    } else {
+      days.push("missed");
+    }
   }
+  return days;
 }
 
 export default function ReportsPage() {
@@ -78,36 +66,44 @@ export default function ReportsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [weekOffset, setWeekOffset] = useState(0);
-  const [attentionDismissed, setAttentionDismissed] = useState(() => isMarkedSafe("demo-dorothy"));
-  const [attentionFading, setAttentionFading] = useState(false);
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeChannel, setComposeChannel] = useState<"email" | "sms">("email");
-  const [composeSenior, setComposeSenior] = useState<typeof seniorSummaries[0] & { email?: string } | null>(null);
+  const [seniors, setSeniors] = useState<SeniorData[]>([]);
+  const [checkIns, setCheckIns] = useState<CheckInRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sendingPreview, setSendingPreview] = useState(false);
 
-  const seniorRates = getSeniorRates(weekOffset);
-  const overallRate = Math.round(seniorRates.reduce((s, r) => s + r.rate, 0) / seniorRates.length);
-  const jitter = Math.abs(weekOffset) % 5;
-  const totalCheckIns = Math.max(10, 26 - jitter * 3);
-  const checkInRate = overallRate;
-  const missedCheckIns = Math.max(0, 6 + jitter * 2);
-  const dorothyRate = seniorRates.find(s => s.name === "Dorothy Wilson")?.rate ?? 0;
-  const showAttention = weekOffset === 0 && dorothyRate < 50 && !attentionDismissed;
+  useEffect(() => {
+    if (!user) return;
+    loadData();
+  }, [user]);
 
-  const openCompose = (senior: typeof seniorSummaries[0], channel: "email" | "sms") => {
-    const sr = seniorRates.find(r => r.name === senior.name);
-    setComposeSenior({ ...senior, email: sr?.email });
-    setComposeChannel(channel);
-    setComposeOpen(true);
-  };
+  const loadData = async () => {
+    if (!user) return;
+    setLoading(true);
 
-  const handleMarkSafeFromReport = () => {
-    setAttentionFading(true);
-    setTimeout(() => {
-      setAttentionDismissed(true);
-      markSafe("demo-dorothy");
-      toast({ title: "Dorothy Wilson marked as safe for today." });
-    }, 200);
+    const { data: managed } = await supabase
+      .from("managed_seniors")
+      .select("id, first_name, last_name, reminder_hour, reminder_minute, reminder_period, grace_period_minutes, mood_check_enabled, claimed_by")
+      .eq("caregiver_id", user.id)
+      .order("created_at", { ascending: false });
+
+    setSeniors(managed || []);
+
+    // Load check-ins for claimed seniors
+    const claimedIds = (managed || []).filter((m: any) => m.claimed_by).map((m: any) => m.claimed_by);
+    if (claimedIds.length > 0) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 60);
+      const { data: cis } = await supabase
+        .from("daily_check_ins")
+        .select("check_date, checked_in_at, senior_id")
+        .in("senior_id", claimedIds)
+        .gte("check_date", thirtyDaysAgo.toISOString().split("T")[0]);
+      setCheckIns(cis || []);
+    } else {
+      setCheckIns([]);
+    }
+
+    setLoading(false);
   };
 
   const handleSendPreview = () => {
@@ -119,6 +115,82 @@ export default function ReportsPage() {
   };
 
   const weekLabel = getWeekLabel(weekOffset);
+  const { start: weekStart, end: weekEnd } = getWeekRange(weekOffset);
+  const weekStartStr = weekStart.toISOString().split("T")[0];
+  const weekEndStr = weekEnd.toISOString().split("T")[0];
+
+  // Filter check-ins for current week
+  const weekCheckIns = checkIns.filter(c => c.check_date >= weekStartStr && c.check_date <= weekEndStr);
+
+  // Per-senior stats
+  const seniorStats = seniors.map(s => {
+    const sCheckIns = weekCheckIns.filter(c => {
+      // Match by claimed_by
+      return true; // We'll match below
+    });
+    const allCheckDates = new Set(checkIns.filter(c => c.check_date >= weekStartStr && c.check_date <= weekEndStr).map(c => c.check_date));
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    let scheduledDays = 0;
+    let checkedDays = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      if (d <= today) {
+        scheduledDays++;
+        if (allCheckDates.has(d.toISOString().split("T")[0])) checkedDays++;
+      }
+    }
+    const rate = scheduledDays > 0 ? Math.round((checkedDays / scheduledDays) * 100) : 0;
+    const days = getDayStatuses(allCheckDates, weekStart);
+
+    return {
+      ...s,
+      name: `${s.first_name} ${s.last_name}`,
+      initials: `${s.first_name[0] || ""}${s.last_name[0] || ""}`.toUpperCase(),
+      rate,
+      checkedDays,
+      scheduledDays,
+      days,
+    };
+  });
+
+  const totalCheckIns = seniorStats.reduce((sum, s) => sum + s.checkedDays, 0);
+  const totalScheduled = seniorStats.reduce((sum, s) => sum + s.scheduledDays, 0);
+  const overallRate = totalScheduled > 0 ? Math.round((totalCheckIns / totalScheduled) * 100) : 0;
+  const missedCheckIns = totalScheduled - totalCheckIns;
+
+  const ratePillColor = (rate: number) => {
+    if (rate >= 80) return { bg: "hsl(var(--status-checked) / 0.12)", color: "hsl(var(--status-checked))" };
+    if (rate >= 60) return { bg: "hsl(var(--status-pending) / 0.12)", color: "hsl(var(--status-pending))" };
+    return { bg: "hsl(var(--status-alert) / 0.12)", color: "hsl(var(--status-alert))" };
+  };
+
+  const dayInitials = ["M", "T", "W", "T", "F", "S", "S"];
+  const dayBoxColor = (s: DayStatus) => {
+    if (s === "checked") return "hsl(var(--status-checked))";
+    if (s === "missed") return "hsl(var(--status-alert))";
+    return "hsl(var(--muted))";
+  };
+
+  const singular = seniors.length === 1;
+
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-1">
+          <h2 className="text-2xl font-black">Weekly Reports</h2>
+          <ReportsHelpButton />
+        </div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-10 bg-muted rounded-xl w-64" />
+          <div className="h-32 bg-muted rounded-2xl" />
+          <div className="h-48 bg-muted rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -144,86 +216,114 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <WeeklyStatsRow totalCheckIns={totalCheckIns} checkInRate={checkInRate} rateDelta={4 - jitter} missedCheckIns={missedCheckIns} activeAlerts={weekOffset === 0 && !attentionDismissed ? 1 : 0} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <CheckinRatesCard seniors={seniorRates} overallRate={overallRate} lastWeekRate={overallRate - 3} seniorCount={4} />
-        <MoodTrendsCard seniors={moodData} />
-      </div>
-
-      {showAttention && (
-        <div
-          className={`rounded-2xl p-5 border shadow-card transition-opacity duration-200 ${attentionFading ? "opacity-0" : "opacity-100"}`}
-          style={{ background: "hsl(var(--status-alert) / 0.06)", borderColor: "hsl(var(--status-alert) / 0.3)" }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-5 h-5" style={{ color: "hsl(var(--status-alert))" }} />
-            <h3 className="font-black text-base" style={{ color: "hsl(var(--status-alert))" }}>Attention Needed</h3>
-          </div>
-          <p className="text-sm text-foreground leading-relaxed">
-            Dorothy Wilson checked in only 3 of 7 days this week and reported "Not great" mood 4 times.
-          </p>
-          <div className="flex flex-wrap gap-2 mt-3">
-            <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => navigate("/seniors/demo-dorothy")}>
-              View Dorothy's Profile →
-            </Button>
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 font-bold" style={{ borderColor: "hsl(var(--status-checked) / 0.4)", color: "hsl(var(--status-checked))" }} onClick={handleMarkSafeFromReport}>
-              ✓ Mark Safe
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <div>
-        <h3 className="text-lg font-black mb-3">Senior Summaries</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {seniorSummaries.map((s) => (
-            <div key={s.name} className="space-y-2">
-              <SeniorSummaryCard {...s} onViewProfile={() => navigate(`/seniors/${s.id}`)} />
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 rounded-xl font-bold text-xs gap-1.5" onClick={() => openCompose(s, "email")}>
-                  <Send className="w-3.5 h-3.5" /> Email {s.name.split(" ")[0]}
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 rounded-xl font-bold text-xs gap-1.5" onClick={() => openCompose(s, "sms")}>
-                  <MessageSquare className="w-3.5 h-3.5" /> SMS {s.name.split(" ")[0]}
-                </Button>
-              </div>
+      {seniors.length === 0 ? (
+        <EmptyState
+          icon={BarChart2}
+          title="No report data yet"
+          description="Check-in history and mood trends will appear here after your seniors complete their first check-in."
+        />
+      ) : (
+        <>
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-card rounded-2xl p-4 border border-border shadow-card text-center">
+              <p className="text-3xl font-black">{totalCheckIns}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Check-ins</p>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="bg-card rounded-2xl p-4 border border-border shadow-card text-center">
+              <p className="text-3xl font-black" style={{ color: overallRate >= 80 ? "hsl(var(--status-checked))" : overallRate >= 60 ? "hsl(var(--status-pending))" : "hsl(var(--status-alert))" }}>
+                {overallRate}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Rate</p>
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border shadow-card text-center">
+              <p className="text-3xl font-black" style={{ color: missedCheckIns > 0 ? "hsl(var(--status-alert))" : "hsl(var(--status-checked))" }}>
+                {missedCheckIns}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Missed</p>
+            </div>
+          </div>
 
-      {/* Weekly Email Digest */}
-      <div className="bg-card rounded-2xl border border-border shadow-card p-5">
-        <h3 className="font-black text-base mb-1">Weekly Email Digest</h3>
-        <p className="text-sm text-muted-foreground mb-3">A summary is automatically emailed every Sunday at 8 AM.</p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 text-xs"
-          disabled={sendingPreview}
-          onClick={handleSendPreview}
-        >
-          {sendingPreview ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
-          ) : (
-            <><Mail className="w-4 h-4" /> Send Preview Email</>
-          )}
-        </Button>
-        <p className="text-xs text-muted-foreground mt-2">
-          {user?.email
-            ? `Sent to: ${user.email}`
-            : (
-              <>
-                Add your email in Settings to use this feature.{" "}
-                <button onClick={() => navigate("/settings")} className="text-primary hover:underline font-semibold">Go to Settings →</button>
-              </>
-            )
-          }
-        </p>
-      </div>
+          {/* Senior summaries */}
+          <div>
+            <h3 className="text-lg font-black mb-3">
+              {singular ? "Your Senior's Check-in Rate" : "Senior Check-in Rates"}
+            </h3>
+            <div className="space-y-3">
+              {seniorStats.map((s) => {
+                const pill = ratePillColor(s.rate);
+                return (
+                  <div key={s.id} className="bg-card rounded-2xl border border-border shadow-card p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0"
+                        style={{ background: "hsl(var(--secondary))", color: "hsl(var(--secondary-foreground))" }}
+                      >
+                        {s.initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">{s.checkedDays}/{s.scheduledDays} days</p>
+                      </div>
+                      <div
+                        className="px-2.5 py-1 rounded-full text-xs font-black shrink-0"
+                        style={{ background: pill.bg, color: pill.color }}
+                      >
+                        {s.rate}%
+                      </div>
+                    </div>
+                    {/* Mini calendar */}
+                    <div className="flex items-center gap-2">
+                      {s.days.map((d, i) => (
+                        <div key={i} className="flex flex-col items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground font-medium">{dayInitials[i]}</span>
+                          <div className="w-7 h-7 rounded-lg" style={{ background: dayBoxColor(d) }} />
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => navigate(`/seniors/${s.id}`)}
+                      className="text-xs text-primary hover:underline font-semibold mt-2"
+                    >
+                      View Profile →
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-      <ComposeMessageModal open={composeOpen} onOpenChange={setComposeOpen} senior={composeSenior} channel={composeChannel} weekLabel={weekLabel} />
+          {/* Weekly Email Digest */}
+          <div className="bg-card rounded-2xl border border-border shadow-card p-5">
+            <h3 className="font-black text-base mb-1">Weekly Email Digest</h3>
+            <p className="text-sm text-muted-foreground mb-3">A summary is automatically emailed every Sunday at 8 AM.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              disabled={sendingPreview}
+              onClick={handleSendPreview}
+            >
+              {sendingPreview ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+              ) : (
+                <><Mail className="w-4 h-4" /> Send Preview Email</>
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              {user?.email
+                ? `Sent to: ${user.email}`
+                : (
+                  <>
+                    Add your email in Settings to use this feature.{" "}
+                    <button onClick={() => navigate("/settings")} className="text-primary hover:underline font-semibold">Go to Settings →</button>
+                  </>
+                )
+              }
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
