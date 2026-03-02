@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ShieldCheck, Users, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import RegistrationCodeStep from "./RegistrationCodeStep";
 
 interface WalkthroughContact {
   name: string;
@@ -20,6 +21,12 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
   const [screen, setScreen] = useState(0);
   const [practiced, setPracticed] = useState(false);
   const [contacts, setContacts] = useState<WalkthroughContact[]>([]);
+
+  // Check if code step was already shown
+  const codeShown = localStorage.getItem("dg_senior_code_shown") === "true";
+  const totalSteps = codeShown ? 3 : 4;
+  // Screen mapping: if code not shown, screen 0 = code step, 1-3 = original 0-2
+  // If code shown, screen 0-2 = original 0-2
 
   useEffect(() => {
     if (seniorId) loadContacts();
@@ -53,6 +60,22 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
 
   const delayLabels = ["Notified first", "Notified after 30 min", "Notified after 60 min"];
 
+  // Registration code step
+  if (!codeShown && screen === 0 && seniorId) {
+    return (
+      <RegistrationCodeStep
+        seniorId={seniorId}
+        onNext={() => setScreen(1)}
+      />
+    );
+  }
+
+  // Map screen index to original walkthrough screens
+  const effectiveScreen = codeShown ? screen : screen - 1;
+  const currentStep = codeShown ? screen + 1 : screen + 1;
+
+  const dots = Array.from({ length: totalSteps }, (_, i) => i);
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 relative">
       {/* Skip link */}
@@ -64,7 +87,7 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
       </button>
 
       {/* Screen 1 — Welcome */}
-      {screen === 0 && (
+      {effectiveScreen === 0 && (
         <div className="max-w-md w-full text-center space-y-6 animate-bounce-in">
           <div
             className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
@@ -79,26 +102,22 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
             Every morning you'll get a text message asking if you're okay. Just tap the link and press 'I'm Okay'. That's it!
           </p>
           <Button
-            onClick={() => setScreen(1)}
+            onClick={() => setScreen(screen + 1)}
             className="w-full rounded-2xl font-bold border-0"
             style={{ minHeight: "64px", fontSize: "18px", background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
           >
             Next →
           </Button>
           <div className="flex justify-center gap-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ background: i === 0 ? "hsl(var(--primary))" : "hsl(var(--muted))" }}
-              />
+            {dots.map((i) => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: i === currentStep - 1 ? "hsl(var(--primary))" : "hsl(var(--muted))" }} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Screen 2 — Emergency Contacts Explained */}
-      {screen === 1 && (
+      {/* Screen 2 — Emergency Contacts */}
+      {effectiveScreen === 1 && (
         <div className="max-w-md w-full text-center space-y-6 animate-bounce-in">
           <div
             className="w-16 h-16 rounded-full mx-auto flex items-center justify-center"
@@ -116,7 +135,6 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
             You don't need to do anything. It happens automatically.
           </p>
 
-          {/* Contact list or empty state */}
           {contacts.length > 0 ? (
             <div className="space-y-2 text-left">
               {contacts.map((c, i) => (
@@ -154,26 +172,22 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
           )}
 
           <Button
-            onClick={() => setScreen(2)}
+            onClick={() => setScreen(screen + 1)}
             className="w-full rounded-2xl font-bold border-0"
             style={{ minHeight: "64px", fontSize: "18px", background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
           >
             Next →
           </Button>
           <div className="flex justify-center gap-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ background: i === 1 ? "hsl(var(--primary))" : "hsl(var(--muted))" }}
-              />
+            {dots.map((i) => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: i === currentStep - 1 ? "hsl(var(--primary))" : "hsl(var(--muted))" }} />
             ))}
           </div>
         </div>
       )}
 
       {/* Screen 3 — Practice Check-in */}
-      {screen === 2 && (
+      {effectiveScreen === 2 && (
         <div className="max-w-md w-full text-center space-y-6 animate-bounce-in">
           <div
             className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
@@ -231,12 +245,8 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
           )}
 
           <div className="flex justify-center gap-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ background: i === 2 ? "hsl(var(--primary))" : "hsl(var(--muted))" }}
-              />
+            {dots.map((i) => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: i === currentStep - 1 ? "hsl(var(--primary))" : "hsl(var(--muted))" }} />
             ))}
           </div>
         </div>
