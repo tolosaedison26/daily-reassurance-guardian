@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft } from "lucide-react";
+
 import SeniorProfileHeader from "@/components/senior-profile/SeniorProfileHeader";
 import QuickStatsStrip from "@/components/senior-profile/QuickStatsStrip";
 import CheckinCalendar from "@/components/senior-profile/CheckinCalendar";
@@ -161,10 +161,7 @@ export default function SeniorProfilePage() {
 
   return (
     <div className="space-y-5">
-      {/* Breadcrumb */}
-      <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ChevronLeft className="w-4 h-4" /> Dashboard
-      </button>
+      {/* Breadcrumbs handled by AppShell */}
 
       <SeniorProfileHeader
         firstName={senior.first_name} lastName={senior.last_name}
