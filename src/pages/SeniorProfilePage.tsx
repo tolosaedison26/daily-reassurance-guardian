@@ -182,8 +182,8 @@ export default function SeniorProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
         <div className="space-y-5">
-          <CheckinCalendar />
-          <ActivityTimeline />
+          <CheckinCalendar seniorUserId={senior?.claimed_by || null} />
+          <ActivityTimeline seniorUserId={senior?.claimed_by || null} />
         </div>
         <div className="space-y-5">
           <QuickStatsStrip streak={stats.streak} weekCheckins={stats.weekCheckins} weekTotal={stats.weekTotal} monthRate={stats.monthRate} monthTrend={stats.monthTrend} avgResponseMin={stats.avgResponseMin} />
