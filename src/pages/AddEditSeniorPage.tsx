@@ -10,7 +10,7 @@ import ScheduleStep from "@/components/wizard/ScheduleStep";
 import ContactsStep from "@/components/wizard/ContactsStep";
 import ReviewStep from "@/components/wizard/ReviewStep";
 import { defaultFormData, type SeniorFormData } from "@/components/wizard/types";
-import { ChevronLeft } from "lucide-react";
+
 
 const STEP_TITLES = [
   { title: "Senior's Profile", desc: "Tell us about the person you're monitoring." },
@@ -189,10 +189,7 @@ export default function AddEditSeniorPage() {
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ChevronLeft className="w-4 h-4" /> {isEdit ? "Back" : "Dashboard"}
-      </button>
+      {/* Breadcrumbs handled by AppShell */}
 
       <WizardStepper currentStep={step} completedSteps={completedSteps} onStepClick={(s) => setStep(s)} allowJump={isEdit} />
 
