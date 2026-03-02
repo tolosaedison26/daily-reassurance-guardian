@@ -20,7 +20,9 @@ import SetupNudgeBanner from "@/components/SetupNudgeBanner";
 import SetupWizard from "@/components/wizard/SetupWizard";
 import SetupComplete from "@/components/wizard/SetupComplete";
 import DashboardTour from "@/components/DashboardTour";
-import { SeniorsHelpButton } from "@/components/HelpModalsContent";
+import { SeniorsHelpButton, DashboardHelpButton } from "@/components/HelpModalsContent";
+import { Loader2 as Loader2Icon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ManagedSeniorData {
   id: string;
@@ -86,7 +88,9 @@ export default function CaregiverDashboard() {
   const [historyTarget, setHistoryTarget] = useState<{ seniorId: string; name: string } | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [markingSafe, setMarkingSafe] = useState<string | null>(null);
   const { subscribe } = usePushNotifications();
+  const { toast } = useToast();
 
   // Onboarding wizard state
   const [showWizard, setShowWizard] = useState(false);
@@ -341,6 +345,27 @@ export default function CaregiverDashboard() {
     setDisconnecting(null);
   };
 
+  const handleMarkSafe = async (senior: SeniorStatus) => {
+    const prevStatus = senior.status;
+    setMarkingSafe(senior.senior_id);
+    setSeniors(prev => prev.map(s => s.senior_id === senior.senior_id ? { ...s, status: "safe" as const } : s));
+    try {
+      const key = `marked_safe_${new Date().toISOString().split("T")[0]}_${senior.senior_id}`;
+      localStorage.setItem(key, "true");
+      toast({ title: `${senior.full_name} marked as safe for today.` });
+    } catch {
+      setSeniors(prev => prev.map(s => s.senior_id === senior.senior_id ? { ...s, status: prevStatus } : s));
+      toast({ title: "Could not mark safe — please try again.", variant: "destructive" });
+    } finally {
+      setMarkingSafe(null);
+    }
+  };
+
+  const isSafeToday = (seniorId: string) => {
+    const key = `marked_safe_${new Date().toISOString().split("T")[0]}_${seniorId}`;
+    return localStorage.getItem(key) === "true";
+  };
+
   const safeCount = seniors.filter((s) => s.status === "safe").length;
   const pendingCount = seniors.filter((s) => s.status === "pending" || s.status === "none").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
@@ -388,7 +413,10 @@ export default function CaregiverDashboard() {
 
       {/* Greeting */}
       <div>
-        <h1 className="text-3xl font-black leading-tight">Hi {firstName}! 👋</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-3xl font-black leading-tight">Hi {firstName}! 👋</h1>
+          <DashboardHelpButton />
+        </div>
         <p className="text-muted-foreground text-base mt-0.5">
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
@@ -657,6 +685,29 @@ export default function CaregiverDashboard() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Mark Safe button */}
+                      {senior.status === "safe" || isSafeToday(senior.senior_id) ? (
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
+                          Already Safe Today ✓
+                        </span>
+                      ) : senior.status === "paused" ? (
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
+                          Check-ins Paused
+                        </span>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMarkSafe(senior); }}
+                          disabled={markingSafe === senior.senior_id}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors min-h-[28px]"
+                          style={{ background: "hsl(var(--status-checked) / 0.12)", color: "hsl(var(--status-checked))" }}
+                        >
+                          {markingSafe === senior.senior_id ? (
+                            <span className="flex items-center gap-1"><Loader2Icon className="w-3 h-3 animate-spin" /> Marking…</span>
+                          ) : (
+                            "Mark Safe ✓"
+                          )}
+                        </button>
+                      )}
                       {senior.is_managed && (
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
