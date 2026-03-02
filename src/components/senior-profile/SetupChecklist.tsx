@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, Circle, Info, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SetupChecklistProps {
   seniorId: string;
@@ -14,14 +15,20 @@ interface SetupChecklistProps {
 
 export default function SetupChecklist({ seniorId, profileCreated, scheduleSet, contactAdded, testCheckinDone }: SetupChecklistProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [dismissed, setDismissed] = useState(() => {
-    return localStorage.getItem(`checklist_dismissed_${seniorId}`) === "true";
+    return localStorage.getItem(`test_checkin_dismissed_${seniorId}`) === "true";
   });
 
-  if (dismissed) return null;
+  const [fading, setFading] = useState(false);
 
+  // Hide conditions
+  const onboardingComplete = user ? localStorage.getItem(`onboarding_complete_${user.id}`) === "true" : false;
   const allDone = profileCreated && scheduleSet && contactAdded && testCheckinDone;
-  if (allDone) return null;
+
+  // Don't render if dismissed, onboarding complete, test done, or all done
+  if (dismissed || onboardingComplete || testCheckinDone || allDone) return null;
 
   const items = [
     { label: "Senior profile created", done: profileCreated, onClick: undefined, hasPopover: false },
@@ -34,19 +41,23 @@ export default function SetupChecklist({ seniorId, profileCreated, scheduleSet, 
   const progress = Math.round((doneCount / items.length) * 100);
 
   const handleDismiss = () => {
-    localStorage.setItem(`checklist_dismissed_${seniorId}`, "true");
-    setDismissed(true);
+    setFading(true);
+    setTimeout(() => {
+      localStorage.setItem(`test_checkin_dismissed_${seniorId}`, "true");
+      setDismissed(true);
+    }, 150);
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-card p-5">
+    <div className={`bg-card rounded-2xl border border-border shadow-card p-5 transition-opacity duration-150 ${fading ? "opacity-0" : "opacity-100"}`}>
       <div className="flex items-center justify-between mb-3">
         <p className="font-black text-base">Setup Progress</p>
         <button
           onClick={handleDismiss}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+          aria-label="Dismiss setup checklist"
         >
-          Dismiss
+          <X className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
 
