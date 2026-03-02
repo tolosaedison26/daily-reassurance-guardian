@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Download, Mail, AlertTriangle, Send, MessageSquare, Loader2 } from "lucide-react";
+import { ReportsHelpButton } from "@/components/HelpModalsContent";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -123,7 +124,10 @@ export default function ReportsPage() {
     <div className="space-y-5">
       {/* Week selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-2xl font-black">Weekly Reports</h2>
+        <div className="flex items-center gap-1">
+          <h2 className="text-2xl font-black">Weekly Reports</h2>
+          <ReportsHelpButton />
+        </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-card border border-border rounded-xl px-2 py-1 shadow-card">
             <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">

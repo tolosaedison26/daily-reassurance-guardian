@@ -12,6 +12,7 @@ import ActivityTimeline from "@/components/senior-profile/ActivityTimeline";
 import CaregiverNotes from "@/components/senior-profile/CaregiverNotes";
 import ProfileSettingsSummary from "@/components/senior-profile/ProfileSettingsSummary";
 import SetupChecklist from "@/components/senior-profile/SetupChecklist";
+import EmergencyContactsSection from "@/components/senior-profile/EmergencyContactsSection";
 import { MOCK_SENIOR } from "@/components/senior-profile/mock-data";
 
 type ProfileStatus = "checked" | "awaiting" | "missed" | "none";
@@ -188,6 +189,7 @@ export default function SeniorProfilePage() {
           <QuickStatsStrip streak={stats.streak} weekCheckins={stats.weekCheckins} weekTotal={stats.weekTotal} monthRate={stats.monthRate} monthTrend={stats.monthTrend} avgResponseMin={stats.avgResponseMin} />
           <SeniorMoodTrendsCard />
           <CaregiverNotes firstName={senior.first_name} managedSeniorId={seniorId} />
+          <EmergencyContactsSection seniorId={seniorId} seniorName={`${senior.first_name} ${senior.last_name}`} onContactCountChange={setContactCount} />
           <ProfileSettingsSummary seniorId={seniorId} schedule={schedule} gracePeriod={senior.grace_period_minutes} moodCheckEnabled={senior.mood_check_enabled} activeDays={activeDays} vacationMode={senior.vacation_mode} vacationUntil={senior.vacation_until} contactCount={contactCount} />
         </div>
       </div>

@@ -20,6 +20,7 @@ import SetupNudgeBanner from "@/components/SetupNudgeBanner";
 import SetupWizard from "@/components/wizard/SetupWizard";
 import SetupComplete from "@/components/wizard/SetupComplete";
 import DashboardTour from "@/components/DashboardTour";
+import { SeniorsHelpButton } from "@/components/HelpModalsContent";
 
 interface ManagedSeniorData {
   id: string;
@@ -566,7 +567,10 @@ export default function CaregiverDashboard() {
       {/* Seniors list */}
       <div data-tour="seniors-list">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-black text-lg">Your Seniors</h2>
+          <div className="flex items-center gap-1">
+            <h2 className="font-black text-lg">Your Seniors</h2>
+            <SeniorsHelpButton />
+          </div>
           <Button
             onClick={() => navigate("/seniors/new")}
             size="sm"
