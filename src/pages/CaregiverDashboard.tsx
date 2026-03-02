@@ -19,6 +19,7 @@ import TodayOverviewBanner from "@/components/senior/TodayOverviewBanner";
 import SetupNudgeBanner from "@/components/SetupNudgeBanner";
 import SetupWizard from "@/components/wizard/SetupWizard";
 import SetupComplete from "@/components/wizard/SetupComplete";
+import DashboardTour from "@/components/DashboardTour";
 
 interface ManagedSeniorData {
   id: string;
@@ -92,6 +93,9 @@ export default function CaregiverDashboard() {
   const [wizardData, setWizardData] = useState<any>(null);
   const [wizardSaving, setWizardSaving] = useState(false);
 
+  // Tour state
+  const [showTour, setShowTour] = useState(false);
+
   const [resolvedAlerts, setResolvedAlerts] = useState<Set<string>>(() => {
     const stored = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
     return new Set(stored as string[]);
@@ -109,10 +113,16 @@ export default function CaregiverDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    // Check if onboarding is needed
     const onboardingDone = localStorage.getItem(`onboarding_complete_${user.id}`);
     if (!onboardingDone) {
       setShowWizard(true);
+    } else {
+      // Check tour
+      const tourDone = localStorage.getItem(`tour_complete_${user.id}`);
+      if (!tourDone) {
+        // Delay tour slightly to let dashboard render
+        setTimeout(() => setShowTour(true), 800);
+      }
     }
     loadSeniors();
     if ("Notification" in window) {
@@ -181,7 +191,6 @@ export default function CaregiverDashboard() {
             .maybeSingle();
           hasCheckedIn = !!checkIn;
         }
-        // Count contacts for this managed senior
         const { count } = await supabase
           .from("managed_senior_contacts")
           .select("id", { count: "exact", head: true })
@@ -213,7 +222,6 @@ export default function CaregiverDashboard() {
   const handleWizardComplete = async (data: any) => {
     if (!user) return;
     setWizardSaving(true);
-    // Create managed senior
     const { data: senior, error } = await supabase
       .from("managed_seniors")
       .insert({
@@ -262,6 +270,13 @@ export default function CaregiverDashboard() {
     setWizardComplete(false);
     setWizardData(null);
     loadSeniors();
+    // Trigger tour after onboarding
+    setTimeout(() => setShowTour(true), 800);
+  };
+
+  const handleTourComplete = () => {
+    if (user) localStorage.setItem(`tour_complete_${user.id}`, "true");
+    setShowTour(false);
   };
 
   // Show wizard
@@ -285,6 +300,7 @@ export default function CaregiverDashboard() {
           seniorName={`${wizardData.firstName} ${wizardData.lastName}`}
           reminderTime={`${wizardData.reminderHour}:${wizardData.reminderMinute} ${wizardData.reminderPeriod}`}
           contactCount={wizardData.contacts.length}
+          gracePeriodMinutes={wizardData.gracePeriodMinutes}
           onGoToDashboard={handleWizardFinish}
         />
       </div>
@@ -328,8 +344,6 @@ export default function CaregiverDashboard() {
   const pendingCount = seniors.filter((s) => s.status === "pending" || s.status === "none").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
-
-
   const allDemoAlerts = [
     {
       seniorId: "demo-alert-1",
@@ -362,13 +376,15 @@ export default function CaregiverDashboard() {
     return true;
   };
 
-  // Seniors without contacts for nudge banner
   const seniorsWithoutContacts = seniors
     .filter(s => s.is_managed && (s.contact_count === 0 || s.contact_count === undefined))
     .map(s => ({ id: s.senior_id, name: s.full_name }));
 
   return (
     <div className="space-y-5">
+      {/* Tour */}
+      {showTour && <DashboardTour onComplete={handleTourComplete} />}
+
       {/* Greeting */}
       <div>
         <h1 className="text-3xl font-black leading-tight">Hi {firstName}! 👋</h1>
@@ -377,19 +393,21 @@ export default function CaregiverDashboard() {
         </p>
       </div>
 
-      {/* Setup nudge banner for seniors without contacts */}
+      {/* Setup nudge banner */}
       {!loading && seniorsWithoutContacts.length > 0 && (
         <SetupNudgeBanner seniorsWithoutContacts={seniorsWithoutContacts} />
       )}
 
       {/* Today's Overview Banner */}
       {!loading && seniors.length > 0 && (
-        <TodayOverviewBanner
-          totalSeniors={seniors.length + alertCount}
-          safeCount={safeCount}
-          pendingCount={pendingCount}
-          alertCount={missedCount}
-        />
+        <div data-tour="overview-banner">
+          <TodayOverviewBanner
+            totalSeniors={seniors.length + alertCount}
+            safeCount={safeCount}
+            pendingCount={pendingCount}
+            alertCount={missedCount}
+          />
+        </div>
       )}
 
       {/* Push notification prompt */}
@@ -474,7 +492,6 @@ export default function CaregiverDashboard() {
             </div>
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Total */}
             <button
               onClick={() => setStatusFilter(statusFilter === "total" ? null : "total")}
               className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "total" ? "ring-2 ring-primary" : "border-border"}`}
@@ -487,7 +504,6 @@ export default function CaregiverDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">Total</p>
               </div>
             </button>
-            {/* Safe */}
             <button
               onClick={() => setStatusFilter(statusFilter === "safe" ? null : "safe")}
               className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "safe" ? "ring-2 ring-primary" : "border-border"}`}
@@ -500,7 +516,6 @@ export default function CaregiverDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">✓ Safe</p>
               </div>
             </button>
-            {/* Pending */}
             <button
               onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
               className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "pending" ? "ring-2 ring-primary" : "border-border"}`}
@@ -513,7 +528,6 @@ export default function CaregiverDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">⏳ Pending</p>
               </div>
             </button>
-            {/* Alert */}
             <button
               onClick={() => setStatusFilter(statusFilter === "alert" ? null : "alert")}
               className={`rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "alert" ? "ring-2 ring-primary" : ""}`}
@@ -550,13 +564,14 @@ export default function CaregiverDashboard() {
       )}
 
       {/* Seniors list */}
-      <div>
+      <div data-tour="seniors-list">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-black text-lg">Your Seniors</h2>
           <Button
             onClick={() => navigate("/seniors/new")}
             size="sm"
             className="rounded-xl font-black gap-1.5"
+            data-tour="add-senior-btn"
           >
             <Plus className="w-4 h-4" /> Add Senior
           </Button>
@@ -567,7 +582,7 @@ export default function CaregiverDashboard() {
           <EmptyState
             icon={Users}
             title="No loved ones added yet"
-            description="Ask them to open the app and share their invite code"
+            description="Add your first senior to start daily check-ins."
             actionLabel="Add Senior"
             onAction={() => navigate("/seniors/new")}
           />
@@ -612,7 +627,6 @@ export default function CaregiverDashboard() {
                         {senior.relationship && (
                           <span className="text-xs text-muted-foreground">· {senior.relationship}</span>
                         )}
-                        {/* Amber warning if no contacts */}
                         {senior.is_managed && senior.contact_count === 0 && (
                           <span title="No emergency contacts set up" className="shrink-0">
                             <AlertTriangle className="w-4 h-4" style={{ color: "hsl(var(--status-pending))" }} />
