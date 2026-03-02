@@ -16,6 +16,7 @@ import { SeniorListSkeleton, StatsStripSkeleton } from "@/components/ui/LoadingS
 import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TodayOverviewBanner from "@/components/senior/TodayOverviewBanner";
+import SetupNudgeBanner from "@/components/SetupNudgeBanner";
 
 interface ManagedSeniorData {
   id: string;
@@ -289,6 +290,15 @@ export default function CaregiverDashboard() {
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
+
+      {/* Setup nudge banner for seniors without contacts */}
+      {!loading && seniors.filter(s => s.is_managed).length > 0 && (
+        <SetupNudgeBanner
+          seniorsWithoutContacts={seniors
+            .filter(s => s.is_managed)
+            .map(s => ({ id: s.senior_id, name: s.full_name }))}
+        />
+      )}
 
       {/* Today's Overview Banner */}
       {!loading && seniors.length > 0 && (
