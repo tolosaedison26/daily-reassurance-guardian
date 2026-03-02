@@ -6,13 +6,14 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function AccountSettingsPage({ onBack }: { onBack?: () => void } = {}) {
   const navigate = useNavigate();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const isSenior = profile?.role === "senior";
 
   // Name
   const [fullName, setFullName] = useState(profile?.full_name || "");
@@ -91,13 +92,32 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
   const handleBack = () => {
     if (onBack) {
       onBack();
+    } else if (isSenior) {
+      navigate("/home");
     } else {
       navigate(-1);
     }
   };
 
+  const handleReplayTour = () => {
+    if (user) {
+      localStorage.removeItem(`tour_complete_${user.id}`);
+      toast({ title: "Tour reset", description: "The dashboard tour will show on your next visit." });
+      navigate("/dashboard");
+    }
+  };
+
   return (
     <div className="space-y-5">
+      {/* Back button */}
+      <button
+        onClick={handleBack}
+        className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+        style={{ minHeight: isSenior ? "48px" : "44px" }}
+      >
+        <ChevronLeft className="w-4 h-4" />
+        {isSenior ? "Back" : "← Home"}
+      </button>
 
       {/* Display Name */}
       <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
@@ -229,6 +249,31 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
             }}
           />
         </div>
+      </div>
+
+      {/* Caregiver-only: Replay tour */}
+      {!isSenior && (
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
+          <button
+            onClick={handleReplayTour}
+            className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Replay dashboard tour
+          </button>
+        </div>
+      )}
+
+      {/* Sign Out */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
+        <Button
+          variant="outline"
+          onClick={signOut}
+          className="w-full h-12 rounded-xl font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </Button>
       </div>
 
       {/* Role info */}
