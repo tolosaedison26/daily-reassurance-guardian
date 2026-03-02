@@ -23,7 +23,7 @@ const faqs = [
   },
   {
     q: "Can I manage multiple family members?",
-    a: "Yes. Pro plan supports up to 5 seniors. Organization plan supports unlimited seniors with multiple caregiver accounts.",
+    a: "Yes. You can monitor up to 3 seniors for free during our early launch period.",
   },
 ];
 

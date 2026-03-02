@@ -17,8 +17,8 @@ const features = [
   },
   {
     icon: LayoutDashboard,
-    title: "Caregiver Dashboard",
-    desc: "See all your seniors' check-in status in real time. One screen. Perfect for families managing multiple parents or care organizations.",
+    title: "Family Dashboard",
+    desc: "See all your seniors' check-in status in real time. One screen. Perfect for families keeping loved ones safe.",
     color: "hsl(var(--primary))",
     bg: "hsl(var(--primary) / 0.12)",
   },
