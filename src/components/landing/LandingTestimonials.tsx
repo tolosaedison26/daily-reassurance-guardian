@@ -8,16 +8,16 @@ const testimonials = [
     quote: "I tried three other apps before Daily Guardian. This is the only one my 79-year-old mother actually uses — because she doesn't have to download anything.",
   },
   {
-    initials: "M",
-    name: "Marcus T.",
-    role: "Care Coordinator, Austin",
-    quote: "We manage 47 residents at our senior living community. Daily Guardian replaced our manual morning check-in calls completely. It's been a game changer.",
-  },
-  {
     initials: "R",
     name: "Rachel M.",
     role: "Daughter, Seattle",
     quote: "My dad had a fall and because he didn't check in, we knew within the hour. The escalation system worked exactly as promised. I can't imagine not having this.",
+  },
+  {
+    initials: "D",
+    name: "David L.",
+    role: "Son, Denver",
+    quote: "Setup took 2 minutes. My mum replies to a text every morning and I get peace of mind. It's the simplest thing that's made the biggest difference.",
   },
 ];
 
