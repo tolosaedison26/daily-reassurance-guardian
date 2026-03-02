@@ -1,12 +1,12 @@
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function AccountSettingsPage({ onBack }: { onBack?: () => void } = {}) {
@@ -98,16 +98,6 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
 
   return (
     <div className="space-y-5">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleBack}
-        className="gap-1 text-muted-foreground hover:text-foreground -ml-2 min-h-[44px]"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Back
-      </Button>
 
       {/* Display Name */}
       <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">

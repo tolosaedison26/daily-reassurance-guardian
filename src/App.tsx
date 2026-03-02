@@ -16,10 +16,12 @@ import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AcknowledgmentPage from "./pages/AcknowledgmentPage";
 import NotFound from "./pages/NotFound";
+import UnauthorizedPage from "./pages/UnauthorizedPage";
 
 // Protected pages
 import CaregiverDashboard from "./pages/CaregiverDashboard";
 import SeniorHome from "./pages/SeniorHome";
+import SeniorsListPage from "./pages/SeniorsListPage";
 import SeniorProfilePage from "./pages/SeniorProfilePage";
 import AddEditSeniorPage from "./pages/AddEditSeniorPage";
 import ContactsEscalationPage from "./pages/ContactsEscalationPage";
@@ -87,8 +89,12 @@ const App = () => (
               </CaregiverShell>
             } />
 
-            {/* Protected: Seniors */}
-            <Route path="/seniors" element={<Navigate to="/dashboard" replace />} />
+            {/* Protected: Seniors list */}
+            <Route path="/seniors" element={
+              <CaregiverShell pageTitle="Seniors">
+                <SeniorsListPage />
+              </CaregiverShell>
+            } />
             <Route path="/seniors/new" element={
               <CaregiverShell pageTitle="Add Senior">
                 <AddEditSeniorPage />
@@ -128,8 +134,19 @@ const App = () => (
                 <AccountSettingsPage />
               </CaregiverShell>
             } />
+            <Route path="/settings/notifications" element={
+              <CaregiverShell pageTitle="Notification Preferences">
+                <AccountSettingsPage />
+              </CaregiverShell>
+            } />
+            <Route path="/settings/billing" element={
+              <CaregiverShell pageTitle="Plan & Billing">
+                <AccountSettingsPage />
+              </CaregiverShell>
+            } />
 
             {/* Error routes */}
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

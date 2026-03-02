@@ -25,7 +25,9 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
   }
 
   if (!user || !profile) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Redirect to login with ?redirect= so user returns after auth
+    const redirectParam = location.pathname !== "/" ? `?redirect=${encodeURIComponent(location.pathname)}` : "";
+    return <Navigate to={`/login${redirectParam}`} replace />;
   }
 
   // Role-based redirect: send seniors to /home, caregivers to /dashboard

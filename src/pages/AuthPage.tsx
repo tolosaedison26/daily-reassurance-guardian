@@ -36,10 +36,13 @@ export default function AuthPage() {
   useEffect(() => {
     if (!authLoading && user && profile) {
       const defaultRoute = profile.role === "senior" ? "/home" : "/dashboard";
-      const from = (location.state as any)?.from || defaultRoute;
+      // Check ?redirect= query param first, then location state
+      const params = new URLSearchParams(location.search);
+      const redirectParam = params.get("redirect");
+      const from = redirectParam || (location.state as any)?.from || defaultRoute;
       navigate(from, { replace: true });
     }
-  }, [authLoading, user, profile, navigate, location.state]);
+  }, [authLoading, user, profile, navigate, location.state, location.search]);
 
   // Sync mode with route
   useEffect(() => {
