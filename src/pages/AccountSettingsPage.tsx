@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, RotateCcw } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, RotateCcw, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SettingsHelpButton } from "@/components/HelpModalsContent";
 
@@ -33,6 +33,26 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
 
   // Notifications
   const [notifEnabled, setNotifEnabled] = useState(true);
+
+  // Registration code (senior only)
+  const [regCode, setRegCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  useEffect(() => {
+    if (isSenior && user) {
+      supabase
+        .from("invite_codes")
+        .select("code")
+        .eq("senior_id", user.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.code) setRegCode(data.code);
+        });
+    }
+  }, [isSenior, user]);
 
   const handleSaveName = async () => {
     const trimmed = fullName.trim();
@@ -124,6 +144,34 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
         <div className="flex items-center gap-1">
           <h1 className="text-xl font-black">Settings</h1>
           <SettingsHelpButton />
+        </div>
+      )}
+
+      {/* Registration Code (senior only) */}
+      {isSenior && regCode && (
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-2">
+          <h2 className="font-bold text-base">Your Registration Code</h2>
+          <p className="text-sm text-muted-foreground">Share this with your caregiver to link your accounts.</p>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex-1 rounded-lg py-3 px-4 text-center font-bold tracking-[0.15em]"
+              style={{ background: "hsl(var(--primary) / 0.06)", border: "1px solid hsl(var(--primary) / 0.2)", color: "hsl(var(--primary))" }}
+            >
+              {regCode}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(regCode).then(() => {
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 2000);
+                });
+              }}
+              className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-muted transition-colors shrink-0"
+              aria-label="Copy code"
+            >
+              {codeCopied ? <Check className="w-4 h-4" style={{ color: "hsl(var(--status-checked))" }} /> : <Copy className="w-4 h-4 text-muted-foreground" />}
+            </button>
+          </div>
         </div>
       )}
 
