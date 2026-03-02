@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, ChevronLeft, CheckCircle, Plus, AlertTriangle, Info } from "lucide-react";
+import { ShieldCheck, ChevronLeft, Plus, AlertTriangle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -42,6 +42,7 @@ const GRACE_OPTIONS = [
 
 export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardProps) {
   const [step, setStep] = useState(0);
+  const [showSkipWarning, setShowSkipWarning] = useState(false);
 
   // Step 2 - Senior info
   const [firstName, setFirstName] = useState("");
@@ -61,8 +62,11 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
   const [contacts, setContacts] = useState<SetupContact[]>([
     { id: crypto.randomUUID(), name: "", relationship: "", phone: "", email: "", notifyViaSms: true, notifyViaEmail: false },
   ]);
-  const [showSkipWarning, setShowSkipWarning] = useState(false);
+  const [showContactSkipWarning, setShowContactSkipWarning] = useState(false);
   const [step4Errors, setStep4Errors] = useState<Record<string, string>>({});
+
+  // Global skip warning (inline)
+  const [showGlobalSkipWarning, setShowGlobalSkipWarning] = useState(false);
 
   const validateStep2 = () => {
     const e: Record<string, string> = {};
@@ -89,7 +93,7 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
   const handleComplete = () => {
     const validContacts = contacts.filter((c) => c.name.trim());
     if (validContacts.length === 0) {
-      setShowSkipWarning(true);
+      setShowContactSkipWarning(true);
       return;
     }
     if (!validateStep4()) return;
@@ -112,24 +116,55 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Progress bar */}
-      <div className="px-4 pt-4 pb-2">
+      {/* Top bar: progress + back + skip */}
+      <div className="px-4 pt-4 pb-2 shrink-0">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold text-muted-foreground">Step {step + 1} of 4</span>
-          {step > 0 && (
+          <div className="flex items-center gap-3">
+            {step > 0 && (
+              <button
+                onClick={() => { setStep(step - 1); setShowGlobalSkipWarning(false); }}
+                className="text-sm text-muted-foreground font-bold flex items-center gap-1 min-h-[44px]"
+              >
+                <ChevronLeft className="w-4 h-4" /> Back
+              </button>
+            )}
             <button
-              onClick={() => setStep(step - 1)}
-              className="text-sm text-muted-foreground font-bold flex items-center gap-1 min-h-[44px]"
+              onClick={() => setShowGlobalSkipWarning(true)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
             >
-              <ChevronLeft className="w-4 h-4" /> Back
+              Skip setup
             </button>
-          )}
+          </div>
         </div>
         <Progress value={progressValue} className="h-2" />
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-lg">
+      {/* Global skip warning (inline) */}
+      {showGlobalSkipWarning && (
+        <div className="px-4 pb-2 shrink-0">
+          <div
+            className="rounded-xl p-3 text-sm space-y-2"
+            style={{ background: "hsl(var(--status-pending) / 0.08)", border: "1px solid hsl(var(--status-pending) / 0.2)" }}
+          >
+            <p className="text-muted-foreground">
+              Skipping now means no one will be monitored. You can restart from Settings → Setup Guide.
+            </p>
+            <div className="flex items-center gap-3">
+              <button onClick={onSkip} className="text-sm font-bold" style={{ color: "hsl(var(--status-alert))" }}>
+                Continue skipping
+              </button>
+              <button onClick={() => setShowGlobalSkipWarning(false)} className="text-sm font-bold text-muted-foreground">
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-28" style={{ maxHeight: "calc(100vh - 160px)" }}>
+        <div className="w-full max-w-lg mx-auto">
 
           {/* Step 1: Welcome */}
           {step === 0 && (
@@ -144,16 +179,6 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
               <p className="text-muted-foreground text-base max-w-sm mx-auto">
                 We'll help you set up daily check-ins for your loved one in 4 quick steps. You can always change these later.
               </p>
-              <Button
-                onClick={() => setStep(1)}
-                className="w-full rounded-2xl font-bold border-0"
-                style={{ minHeight: "56px", fontSize: "16px" }}
-              >
-                Let's get started →
-              </Button>
-              <button onClick={onSkip} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Skip setup — I'll do this later
-              </button>
             </div>
           )}
 
@@ -202,13 +227,6 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
                 </div>
                 {step2Errors.relationship && <p className="text-xs text-destructive mt-1">{step2Errors.relationship}</p>}
               </div>
-              <Button
-                onClick={() => validateStep2() && setStep(2)}
-                className="w-full rounded-2xl font-bold"
-                style={{ minHeight: "48px" }}
-              >
-                Save & Continue →
-              </Button>
             </div>
           )}
 
@@ -243,18 +261,11 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
                   ))}
                 </div>
               </div>
-              <Button
-                onClick={() => setStep(3)}
-                className="w-full rounded-2xl font-bold"
-                style={{ minHeight: "48px" }}
-              >
-                Save & Continue →
-              </Button>
             </div>
           )}
 
           {/* Step 4: Emergency Contacts */}
-          {step === 3 && !showSkipWarning && (
+          {step === 3 && !showContactSkipWarning && (
             <div className="space-y-5 animate-bounce-in">
               <div>
                 <h1 className="text-xl font-black">Who should we contact if {firstName} misses a check-in?</h1>
@@ -396,26 +407,11 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
                   <Plus className="w-4 h-4" /> Add another contact
                 </button>
               )}
-
-              <Button
-                onClick={handleComplete}
-                disabled={saving}
-                className="w-full rounded-2xl font-bold border-0"
-                style={{ minHeight: "56px", fontSize: "16px", background: "hsl(var(--status-checked))", color: "#fff" }}
-              >
-                {saving ? "Setting up…" : "Complete Setup →"}
-              </Button>
-              <button
-                onClick={() => setShowSkipWarning(true)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors block mx-auto"
-              >
-                Skip for now — I'll add contacts later
-              </button>
             </div>
           )}
 
-          {/* Skip warning modal */}
-          {step === 3 && showSkipWarning && (
+          {/* Skip contacts warning */}
+          {step === 3 && showContactSkipWarning && (
             <div className="space-y-5 animate-bounce-in text-center">
               <div
                 className="w-14 h-14 rounded-full mx-auto flex items-center justify-center"
@@ -428,7 +424,7 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
                 Without emergency contacts, no one will be notified if {firstName} misses a check-in.
               </p>
               <Button
-                onClick={() => setShowSkipWarning(false)}
+                onClick={() => setShowContactSkipWarning(false)}
                 className="w-full rounded-2xl font-bold"
                 style={{ minHeight: "48px" }}
               >
@@ -442,8 +438,57 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
               </button>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Step 5: Completion - shown externally after onComplete */}
+      {/* Fixed bottom button bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-4 z-50">
+        <div className="max-w-lg mx-auto">
+          {step === 0 && (
+            <Button
+              onClick={() => setStep(1)}
+              className="w-full rounded-2xl font-bold border-0"
+              style={{ minHeight: "56px", fontSize: "16px" }}
+            >
+              Let's get started →
+            </Button>
+          )}
+          {step === 1 && (
+            <Button
+              onClick={() => validateStep2() && setStep(2)}
+              className="w-full rounded-2xl font-bold"
+              style={{ minHeight: "48px" }}
+            >
+              Save & Continue →
+            </Button>
+          )}
+          {step === 2 && (
+            <Button
+              onClick={() => setStep(3)}
+              className="w-full rounded-2xl font-bold"
+              style={{ minHeight: "48px" }}
+            >
+              Save & Continue →
+            </Button>
+          )}
+          {step === 3 && !showContactSkipWarning && (
+            <div className="space-y-2">
+              <Button
+                onClick={handleComplete}
+                disabled={saving}
+                className="w-full rounded-2xl font-bold border-0"
+                style={{ minHeight: "56px", fontSize: "16px", background: "hsl(var(--status-checked))", color: "#fff" }}
+              >
+                {saving ? "Setting up…" : "Complete Setup →"}
+              </Button>
+              <button
+                onClick={() => setShowContactSkipWarning(true)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors block mx-auto"
+              >
+                Skip for now — I'll add contacts later
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

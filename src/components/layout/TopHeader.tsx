@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useAuth } from "@/contexts/AuthContext";
-import { Bell, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
-import AvatarCircle from "@/components/ui/AvatarCircle";
 
 interface TopHeaderProps {
   pageTitle?: string;
@@ -13,25 +11,16 @@ interface TopHeaderProps {
 
 export default function TopHeader({ pageTitle, alertCount = 0 }: TopHeaderProps) {
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
   const [showNotifs, setShowNotifs] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifs(false);
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setShowUserMenu(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  const initials = profile?.full_name
-    ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-    : "?";
 
   return (
     <header className={cn(
@@ -52,9 +41,8 @@ export default function TopHeader({ pageTitle, alertCount = 0 }: TopHeaderProps)
         )}
       </div>
 
-      {/* Right */}
-      <div className="flex items-center gap-1">
-        {/* Notification bell */}
+      {/* Right — bell only */}
+      <div className="flex items-center">
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setShowNotifs(!showNotifs)}
@@ -79,51 +67,6 @@ export default function TopHeader({ pageTitle, alertCount = 0 }: TopHeaderProps)
               <div className="text-sm text-muted-foreground text-center py-4">
                 No new notifications
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* User avatar menu */}
-        <div className="relative" ref={userMenuRef}>
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-1.5 rounded-full hover:bg-muted transition-colors p-1 pr-2"
-            aria-label="User menu"
-          >
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{ background: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }}
-            >
-              {initials}
-            </div>
-            {!isMobile && <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-          </button>
-
-          {showUserMenu && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-card border border-border rounded-xl shadow-lg py-2 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-              {/* User info */}
-              <div className="px-4 py-2 border-b border-border">
-                <p className="text-sm font-bold truncate">{profile?.full_name || "User"}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
-
-              <button
-                onClick={() => { setShowUserMenu(false); navigate("/settings"); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-muted transition-colors"
-              >
-                <Settings className="w-4 h-4 text-muted-foreground" />
-                Account Settings
-              </button>
-
-              <div className="border-t border-border my-1" />
-
-              <button
-                onClick={() => { setShowUserMenu(false); signOut(); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-muted transition-colors text-destructive"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
             </div>
           )}
         </div>

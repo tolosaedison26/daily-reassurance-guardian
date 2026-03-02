@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { LogOut, Music, Settings, Bell } from "lucide-react";
+import { LogOut, Music, Settings, Bell, ChevronLeft } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
@@ -98,7 +98,6 @@ export default function SeniorHome() {
 
   const firstName = profile?.full_name?.split(" ")[0] || "Friend";
 
-  // Show walkthrough overlay
   if (showWalkthrough) {
     return (
       <SeniorWalkthrough
@@ -111,7 +110,24 @@ export default function SeniorHome() {
   }
 
   if (showAccountSettings) return <AccountSettingsPage onBack={() => setShowAccountSettings(false)} />;
-  if (showSound) return <SoundPlayer onBack={() => setShowSound(false)} />;
+
+  if (showSound) {
+    return (
+      <div className="min-h-screen bg-background max-w-3xl mx-auto w-full">
+        <div className="px-4 pt-4">
+          <button
+            onClick={() => setShowSound(false)}
+            className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+            style={{ minHeight: "48px" }}
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+        </div>
+        <SoundPlayer onBack={() => setShowSound(false)} />
+      </div>
+    );
+  }
+
   if (showSuccess) {
     return <CheckinSuccessScreen firstName={firstName} mood={selectedMood} onDismiss={dismissSuccess} />;
   }
@@ -214,7 +230,6 @@ export default function SeniorHome() {
           </div>
         ) : (
           <>
-            {/* BIG CHECK-IN BUTTON */}
             <Button
               onClick={() => {
                 setShowMoodSelector(true);
@@ -232,7 +247,6 @@ export default function SeniorHome() {
               {loading ? "Checking in…" : "✓  I'M OKAY"}
             </Button>
 
-            {/* Mood selector */}
             <MoodSelector
               selected={selectedMood}
               onSelect={handleMoodSelect}
