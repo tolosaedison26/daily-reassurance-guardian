@@ -11,10 +11,9 @@ export default function LandingNav({ onGetStarted, onSignIn }: LandingNavProps) 
   const [open, setOpen] = useState(false);
 
   const links = [
-    { label: "How It Works", href: "#how-it-works" },
     { label: "Features", href: "#features" },
+    { label: "How It Works", href: "#how-it-works" },
     { label: "Pricing", href: "#pricing" },
-    { label: "For Organizations", href: "#organizations" },
   ];
 
   const scrollTo = (href: string) => {

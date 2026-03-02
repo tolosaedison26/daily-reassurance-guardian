@@ -10,19 +10,20 @@ export default function LandingFinalCTA({ onGetStarted }: LandingFinalCTAProps) 
     <section className="py-20 md:py-28" style={{ background: "hsl(var(--foreground))" }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-primary-foreground">
-          Start protecting the people you love.{" "}
-          <span className="text-primary">Today.</span>
+          Start protecting your loved ones today —{" "}
+          <span className="text-primary">it's free.</span>
         </h2>
         <p className="text-base md:text-lg mt-4 max-w-md mx-auto" style={{ color: "hsl(0 0% 100% / 0.6)" }}>
-          Takes 5 minutes. Free forever for one senior.
+          Join families using Daily Guardian during our free early launch.
+          No credit card. No commitment. Cancel any time.
         </p>
 
         <Button onClick={onGetStarted} className="mt-8 h-14 px-10 text-base md:text-lg font-black rounded-2xl shadow-btn" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>
-          Create Your Free Account <ArrowRight className="w-5 h-5 ml-1" />
+          Get Free Access Now <ArrowRight className="w-5 h-5 ml-1" />
         </Button>
 
         <p className="text-sm mt-4" style={{ color: "hsl(0 0% 100% / 0.4)" }}>
-          No credit card required · Cancel anytime · Free plan available forever
+          Takes less than 2 minutes to set up.
         </p>
 
         <div className="flex items-center justify-center gap-8 mt-10">
