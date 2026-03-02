@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { SettingsHelpButton } from "@/components/HelpModalsContent";
 
 export default function AccountSettingsPage({ onBack }: { onBack?: () => void } = {}) {
   const navigate = useNavigate();
@@ -118,6 +119,13 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
         <ChevronLeft className="w-4 h-4" />
         {isSenior ? "Back" : "← Home"}
       </button>
+
+      {!isSenior && (
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-black">Settings</h1>
+          <SettingsHelpButton />
+        </div>
+      )}
 
       {/* Display Name */}
       <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
