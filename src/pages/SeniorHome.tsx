@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { LogOut, Music, Settings, Bell, ChevronLeft } from "lucide-react";
+import { LogOut, Music, Settings, Bell } from "lucide-react";
 import SoundPlayer from "@/components/SoundPlayer";
 import ReminderSettingsModal from "@/components/ReminderSettingsModal";
 import VoiceRecorder from "@/components/VoiceRecorder";
-import EmergencyContacts from "@/components/EmergencyContacts";
 import SeniorActivityPanel from "@/components/SeniorActivityPanel";
 import InviteCodeCard from "@/components/InviteCodeCard";
 import AccountSettingsPage from "@/pages/AccountSettingsPage";
 import MoodSelector from "@/components/senior/MoodSelector";
 import CheckinSuccessScreen from "@/components/senior/CheckinSuccessScreen";
 import SeniorWalkthrough from "@/components/senior/SeniorWalkthrough";
+import SeniorEmergencyContactsCard from "@/components/senior/SeniorEmergencyContactsCard";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
@@ -36,7 +36,6 @@ export default function SeniorHome() {
     if (user) {
       loadTodayStatus();
       loadReminderSettings();
-      // Check if first visit
       const walkthroughDone = localStorage.getItem(`walkthrough_completed_${user.id}`);
       if (!walkthroughDone) {
         setShowWalkthrough(true);
@@ -104,6 +103,7 @@ export default function SeniorHome() {
     return (
       <SeniorWalkthrough
         firstName={firstName}
+        seniorId={user?.id}
         onComplete={handleWalkthroughComplete}
         onCheckIn={() => handleCheckIn()}
       />
@@ -241,6 +241,14 @@ export default function SeniorHome() {
           </>
         )}
 
+        {/* Emergency Contacts Card — read-only */}
+        {user && (
+          <SeniorEmergencyContactsCard
+            seniorId={user.id}
+            onViewSettings={() => setShowAccountSettings(true)}
+          />
+        )}
+
         {/* Voice message (post check-in) */}
         {isChecked && user && (
           <div className="w-full">
@@ -250,9 +258,6 @@ export default function SeniorHome() {
 
         {/* Invite code */}
         {user && <InviteCodeCard seniorId={user.id} />}
-
-        {/* Emergency Contacts - read-only for seniors */}
-        {user && <EmergencyContacts userId={user.id} />}
 
         {/* Calm Sounds */}
         <button
