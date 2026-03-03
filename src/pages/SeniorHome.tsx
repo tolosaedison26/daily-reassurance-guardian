@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { createCheckIn, getTodayCheckIn, getReminderSettings } from "@/lib/supabase-helpers";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { LogOut, Music, Settings, Bell, ChevronLeft } from "lucide-react";
@@ -25,17 +25,17 @@ export default function SeniorHome() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<"great" | "okay" | "bad" | null>(null);
+  const [selectedMood, setSelectedMood] = useState<"great" | "okay" | "not-great" | null>(null);
   const [loading, setLoading] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
   const [showMoodSelector, setShowMoodSelector] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [seniorRecordId, setSeniorRecordId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      loadTodayStatus();
-      loadReminderSettings();
+      loadSeniorRecord();
       const walkthroughDone = localStorage.getItem(`walkthrough_completed_${user.id}`);
       if (!walkthroughDone) {
         setShowWalkthrough(true);
@@ -43,13 +43,40 @@ export default function SeniorHome() {
     }
   }, [user]);
 
-  const loadTodayStatus = async () => {
+  const loadSeniorRecord = async () => {
     if (!user) return;
-    const { data } = await getTodayCheckIn(user.id);
-    if (data) {
+    // Find the seniors record linked to this user
+    const { data: senior } = await supabase
+      .from("seniors")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (senior) {
+      setSeniorRecordId(senior.id);
+      await loadTodayStatus(senior.id);
+    } else {
+      // No senior record yet — check if awaiting
+      setStatus("none");
+    }
+  };
+
+  const loadTodayStatus = async (sId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
+      .from("check_ins")
+      .select("*")
+      .eq("senior_id", sId)
+      .eq("check_date", today)
+      .maybeSingle();
+
+    if (data?.status === "SAFE") {
       setStatus("checked");
-      const time = new Date(data.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setCheckInTime(time);
+      if (data.checked_in_at) {
+        const time = new Date(data.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        setCheckInTime(time);
+      }
+      if (data.mood) setSelectedMood(data.mood as any);
     } else {
       const now = new Date();
       const reminderHour = parseInt(reminderTime.split(":")[0]);
@@ -57,16 +84,26 @@ export default function SeniorHome() {
     }
   };
 
-  const loadReminderSettings = async () => {
-    if (!user) return;
-    const { data } = await getReminderSettings(user.id);
-    if (data) setReminderTime(data.reminder_time.slice(0, 5));
-  };
-
-  const handleCheckIn = async (mood?: "great" | "okay" | "bad") => {
-    if (!user || status === "checked" || loading) return;
+  const handleCheckIn = async (mood?: "great" | "okay" | "not-great") => {
+    if (!user || !seniorRecordId || status === "checked" || loading) return;
     setLoading(true);
-    const { data } = await createCheckIn(user.id);
+
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
+      .from("check_ins")
+      .upsert(
+        {
+          senior_id: seniorRecordId,
+          check_date: today,
+          status: "SAFE",
+          mood: mood || null,
+          checked_in_at: new Date().toISOString(),
+        },
+        { onConflict: "senior_id,check_date" }
+      )
+      .select()
+      .single();
+
     if (data) {
       setStatus("checked");
       if (mood) setSelectedMood(mood);
@@ -77,7 +114,7 @@ export default function SeniorHome() {
     setLoading(false);
   };
 
-  const handleMoodSelect = (mood: "great" | "okay" | "bad") => {
+  const handleMoodSelect = (mood: "great" | "okay" | "not-great") => {
     setSelectedMood(mood);
     if (status !== "checked") {
       handleCheckIn(mood);
@@ -102,7 +139,7 @@ export default function SeniorHome() {
     return (
       <SeniorWalkthrough
         firstName={firstName}
-        seniorId={user?.id}
+        seniorId={seniorRecordId || undefined}
         onComplete={handleWalkthroughComplete}
         onCheckIn={() => handleCheckIn()}
       />
@@ -115,11 +152,7 @@ export default function SeniorHome() {
     return (
       <div className="min-h-screen bg-background max-w-3xl mx-auto w-full">
         <div className="px-4 pt-4">
-          <button
-            onClick={() => setShowSound(false)}
-            className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
-            style={{ minHeight: "48px" }}
-          >
+          <button onClick={() => setShowSound(false)} className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors" style={{ minHeight: "48px" }}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         </div>
@@ -137,43 +170,25 @@ export default function SeniorHome() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background max-w-3xl mx-auto w-full">
-      {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-5 pt-8 sm:pt-10 pb-4">
         <div className="flex items-center gap-2">
           <span className="text-2xl">☀️</span>
-          <span className="text-lg font-black tracking-tight" style={{ color: "hsl(var(--primary))" }}>
-            Daily Guardian
-          </span>
+          <span className="text-lg font-black tracking-tight" style={{ color: "hsl(var(--primary))" }}>Daily Guardian</span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowActivity(true)}
-            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center relative"
-            aria-label="My activity"
-          >
+          <button onClick={() => setShowActivity(true)} className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center relative" aria-label="My activity">
             <Bell className="w-5 h-5 text-muted-foreground" />
           </button>
-          <button
-            onClick={() => setShowAccountSettings(true)}
-            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center"
-            aria-label="Account Settings"
-          >
+          <button onClick={() => setShowAccountSettings(true)} className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center" aria-label="Account Settings">
             <Settings className="w-5 h-5 text-muted-foreground" />
           </button>
-          <button
-            onClick={signOut}
-            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center"
-            aria-label="Sign out"
-          >
+          <button onClick={signOut} className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-muted flex items-center justify-center" aria-label="Sign out">
             <LogOut className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col items-center px-4 sm:px-5 pt-6 pb-24 gap-5">
-
-        {/* Greeting */}
         <div className="w-full text-center">
           <h1 className="font-black text-foreground leading-tight" style={{ fontSize: "28px", lineHeight: "36px" }}>
             {isChecked ? `You're all set, ${firstName}!` : `Good morning, ${firstName}!`} 👋
@@ -183,106 +198,54 @@ export default function SeniorHome() {
           </p>
         </div>
 
-        {/* Status badge */}
         <div className="flex justify-center">
-          <StatusBadge
-            status={isChecked ? "safe" : isPending ? "pending" : "paused"}
-          />
+          <StatusBadge status={isChecked ? "safe" : isPending ? "pending" : "paused"} />
         </div>
 
-        {/* Overdue warning */}
         {isPending && (
-          <div
-            className="w-full rounded-2xl p-4 border text-center"
-            style={{
-              background: "hsl(var(--status-pending) / 0.06)",
-              borderColor: "hsl(var(--status-pending) / 0.25)",
-            }}
-          >
-            <p className="font-semibold" style={{ fontSize: "16px", color: "hsl(var(--status-pending))" }}>
-              Your family is waiting to hear from you.
-            </p>
-            <p className="text-muted-foreground mt-1" style={{ fontSize: "16px" }}>
-              Please tap the button below when you see this.
-            </p>
+          <div className="w-full rounded-2xl p-4 border text-center" style={{ background: "hsl(var(--status-pending) / 0.06)", borderColor: "hsl(var(--status-pending) / 0.25)" }}>
+            <p className="font-semibold" style={{ fontSize: "16px", color: "hsl(var(--status-pending))" }}>Your family is waiting to hear from you.</p>
+            <p className="text-muted-foreground mt-1" style={{ fontSize: "16px" }}>Please tap the button below when you see this.</p>
           </div>
         )}
 
-        {/* Checked-in state */}
         {isChecked ? (
-          <div
-            className="w-full rounded-2xl p-6 border text-center"
-            style={{
-              background: "hsl(var(--status-checked) / 0.06)",
-              borderColor: "hsl(var(--status-checked) / 0.25)",
-            }}
-          >
+          <div className="w-full rounded-2xl p-6 border text-center" style={{ background: "hsl(var(--status-checked) / 0.06)", borderColor: "hsl(var(--status-checked) / 0.25)" }}>
             <p className="text-4xl mb-3">✅</p>
-            <p className="font-black" style={{ fontSize: "22px", color: "hsl(var(--status-checked))" }}>
-              You're all checked in!
-            </p>
+            <p className="font-black" style={{ fontSize: "22px", color: "hsl(var(--status-checked))" }}>You're all checked in!</p>
             <p className="text-muted-foreground mt-2" style={{ fontSize: "18px", lineHeight: "28px" }}>
-              You checked in at {checkInTime} {selectedMood === "great" ? "😊" : selectedMood === "okay" ? "😐" : selectedMood === "bad" ? "😔" : ""}
+              You checked in at {checkInTime} {selectedMood === "great" ? "😊" : selectedMood === "okay" ? "😐" : selectedMood === "not-great" ? "😔" : ""}
             </p>
-            <p className="text-muted-foreground mt-1" style={{ fontSize: "16px" }}>
-              See you tomorrow!
-            </p>
+            <p className="text-muted-foreground mt-1" style={{ fontSize: "16px" }}>See you tomorrow!</p>
           </div>
         ) : (
           <>
             <Button
-              onClick={() => {
-                setShowMoodSelector(true);
-                handleCheckIn();
-              }}
+              onClick={() => { setShowMoodSelector(true); handleCheckIn(); }}
               disabled={loading}
               className="w-full rounded-2xl border-0 shadow-btn font-bold"
-              style={{
-                minHeight: "80px",
-                fontSize: "22px",
-                background: "hsl(var(--status-checked))",
-                color: "#fff",
-              }}
+              style={{ minHeight: "80px", fontSize: "22px", background: "hsl(var(--status-checked))", color: "#fff" }}
             >
               {loading ? "Checking in…" : "✓  I'M OKAY"}
             </Button>
-
-            <MoodSelector
-              selected={selectedMood}
-              onSelect={handleMoodSelect}
-              disabled={loading}
-            />
+            <MoodSelector selected={selectedMood as any} onSelect={handleMoodSelect as any} disabled={loading} />
           </>
         )}
 
-        {/* Emergency Contacts Card — read-only */}
-        {user && (
-          <SeniorEmergencyContactsCard
-            seniorId={user.id}
-            onViewSettings={() => setShowAccountSettings(true)}
-          />
+        {seniorRecordId && (
+          <SeniorEmergencyContactsCard seniorId={seniorRecordId} onViewSettings={() => setShowAccountSettings(true)} />
         )}
 
-        {/* Voice message (post check-in) */}
-        {isChecked && user && (
+        {isChecked && seniorRecordId && (
           <div className="w-full">
-            <VoiceRecorder seniorId={user.id} onSent={() => {}} />
+            <VoiceRecorder seniorId={seniorRecordId} onSent={() => {}} />
           </div>
         )}
 
-        {/* Invite code */}
-        {user && <InviteCodeCard seniorId={user.id} />}
+        {seniorRecordId && <InviteCodeCard seniorId={seniorRecordId} />}
 
-        {/* Calm Sounds */}
-        <button
-          onClick={() => setShowSound(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card"
-          style={{ minHeight: "64px" }}
-        >
-          <div
-            className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "hsl(var(--accent))" }}
-          >
+        <button onClick={() => setShowSound(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card" style={{ minHeight: "64px" }}>
+          <div className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--accent))" }}>
             <Music className="w-5 h-5" style={{ color: "hsl(var(--accent-foreground))" }} />
           </div>
           <div className="text-left">
@@ -293,19 +256,8 @@ export default function SeniorHome() {
         </button>
       </div>
 
-      {showSettings && (
-        <ReminderSettingsModal
-          seniorId={user?.id || ""}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-
-      {showActivity && user && (
-        <SeniorActivityPanel
-          seniorId={user.id}
-          onClose={() => setShowActivity(false)}
-        />
-      )}
+      {showSettings && <ReminderSettingsModal seniorId={seniorRecordId || ""} onClose={() => setShowSettings(false)} />}
+      {showActivity && seniorRecordId && <SeniorActivityPanel seniorId={seniorRecordId} onClose={() => setShowActivity(false)} />}
     </div>
   );
 }

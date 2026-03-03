@@ -34,22 +34,13 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
 
   const loadContacts = async () => {
     if (!seniorId) return;
-    const { data: managed } = await supabase
-      .from("managed_senior_contacts")
-      .select("name, relationship, sort_order")
-      .eq("managed_senior_id", seniorId)
-      .order("sort_order", { ascending: true });
-    if (managed && managed.length > 0) {
-      setContacts(managed);
-      return;
-    }
-    const { data: legacy } = await supabase
+    const { data } = await supabase
       .from("emergency_contacts")
-      .select("name, relationship")
-      .eq("user_id", seniorId)
-      .order("created_at", { ascending: true });
-    if (legacy) {
-      setContacts(legacy.map((c, i) => ({ ...c, sort_order: i })));
+      .select("name, relationship, sort_order")
+      .eq("senior_id", seniorId)
+      .order("sort_order", { ascending: true });
+    if (data && data.length > 0) {
+      setContacts(data);
     }
   };
 
