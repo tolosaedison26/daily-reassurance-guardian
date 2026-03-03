@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -8,7 +9,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, AlertCircle } from "lucide-react";
+import { ChevronRight, AlertCircle, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type { SeniorFormData } from "./types";
 
 const RELATIONSHIPS = [
@@ -24,11 +27,110 @@ interface Props {
 }
 
 export default function BasicInfoStep({ data, onChange, onNext, errors }: Props) {
+  const { user } = useAuth();
+  const [inviteCode, setInviteCode] = useState("");
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeResult, setCodeResult] = useState<{ success: boolean; name?: string; error?: string } | null>(null);
+
   const initials =
     (data.firstName.charAt(0) + data.lastName.charAt(0)).toUpperCase() || "?";
 
+  const handleConnect = async () => {
+    if (!inviteCode.trim() || !user) return;
+    setCodeLoading(true);
+    setCodeResult(null);
+    try {
+      const { data: result, error } = await supabase.rpc("connect_via_invite_code", {
+        p_code: inviteCode.trim(),
+        p_caregiver_id: user.id,
+      });
+
+      if (error) throw error;
+
+      const parsed = result as { success: boolean; error?: string };
+      if (!parsed.success) {
+        setCodeResult({ success: false, error: parsed.error || "Code not found. Check with your loved one and try again." });
+        setCodeLoading(false);
+        return;
+      }
+
+      // Code was valid — look up the connected senior's profile to pre-fill
+      const { data: codeRow } = await supabase
+        .from("invite_codes")
+        .select("senior_id")
+        .eq("code", inviteCode.trim().toUpperCase())
+        .limit(1)
+        .maybeSingle();
+
+      if (codeRow) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", codeRow.senior_id)
+          .maybeSingle();
+
+        if (profile?.full_name) {
+          const parts = profile.full_name.split(" ");
+          const first = parts[0] || "";
+          const last = parts.slice(1).join(" ") || "";
+          onChange({ firstName: first, lastName: last });
+          setCodeResult({ success: true, name: profile.full_name });
+        } else {
+          setCodeResult({ success: true, name: "your loved one" });
+        }
+      } else {
+        setCodeResult({ success: true, name: "your loved one" });
+      }
+    } catch {
+      setCodeResult({ success: false, error: "Code not found. Check with your loved one and try again." });
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Invite Code Section */}
+      <div className="border border-border rounded-2xl p-5 bg-card">
+        <p className="text-sm font-semibold mb-1">Enter invite code</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Ask your loved one to open the app, tap 'Connect Family' and share their code with you.
+        </p>
+        <Input
+          placeholder="e.g. PARK-7291"
+          value={inviteCode}
+          onChange={(e) => {
+            setInviteCode(e.target.value.toUpperCase());
+            setCodeResult(null);
+          }}
+          className="text-center rounded-xl text-base tracking-wider"
+        />
+        <Button
+          onClick={handleConnect}
+          disabled={codeLoading || !inviteCode.trim()}
+          className="w-full h-12 mt-3 rounded-xl font-semibold"
+          style={{ background: "hsl(142, 71%, 45%)", color: "#fff" }}
+        >
+          {codeLoading ? "Connecting…" : "Connect ✓"}
+        </Button>
+        {codeResult && (
+          <p className={`text-sm mt-2 flex items-center gap-1 ${codeResult.success ? "text-green-600" : "text-red-500"}`}>
+            {codeResult.success ? (
+              <><Check className="w-4 h-4" /> Connected to {codeResult.name}</>
+            ) : (
+              <><AlertCircle className="w-3 h-3" /> {codeResult.error}</>
+            )}
+          </p>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground">or add manually</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
       {/* Avatar */}
       <div className="flex flex-col items-center gap-1">
         <div
