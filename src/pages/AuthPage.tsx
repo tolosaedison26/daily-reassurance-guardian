@@ -77,10 +77,7 @@ export default function AuthPage() {
       if (error) {
         setError(error.message);
       } else if (data.user) {
-        await supabase.from("profiles").upsert(
-          { user_id: data.user.id, full_name: fullName, role },
-          { onConflict: "user_id", ignoreDuplicates: false }
-        );
+        // Profile is auto-created by database trigger — just insert role
         await supabase.from("user_roles").upsert(
           { user_id: data.user.id, role },
           { onConflict: "user_id,role" }

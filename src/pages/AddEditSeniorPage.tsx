@@ -11,7 +11,6 @@ import ContactsStep from "@/components/wizard/ContactsStep";
 import ReviewStep from "@/components/wizard/ReviewStep";
 import { defaultFormData, type SeniorFormData } from "@/components/wizard/types";
 
-
 const STEP_TITLES = [
   { title: "Senior's Profile", desc: "Tell us about the person you're monitoring." },
   { title: "Check-in Schedule", desc: "Set when their daily check-in reminder will be sent." },
@@ -32,20 +31,19 @@ export default function AddEditSeniorPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Load existing senior data when editing
   useEffect(() => {
     if (!isEdit || !id || !user) return;
     const loadSenior = async () => {
       const { data: senior } = await supabase
-        .from("managed_seniors")
+        .from("seniors")
         .select("*")
         .eq("id", id)
         .single();
       if (senior) {
         const { data: contacts } = await supabase
-          .from("managed_senior_contacts")
+          .from("emergency_contacts")
           .select("*")
-          .eq("managed_senior_id", id)
+          .eq("senior_id", id)
           .order("sort_order", { ascending: true });
 
         setData({
@@ -66,7 +64,7 @@ export default function AddEditSeniorPage() {
           vacationMode: senior.vacation_mode,
           vacationFrom: senior.vacation_from || "",
           vacationUntil: senior.vacation_until || "",
-          contacts: (contacts || []).map((c) => ({
+          contacts: (contacts || []).map((c: any) => ({
             id: c.id,
             name: c.name,
             relationship: c.relationship || "",
@@ -136,44 +134,67 @@ export default function AddEditSeniorPage() {
     setSaving(true);
     try {
       const payload = {
-        caregiver_id: user.id, first_name: data.firstName, last_name: data.lastName,
-        phone: data.phone || null, relationship: data.relationship || null, date_of_birth: data.dateOfBirth || null,
-        notes: data.notes || null, reminder_hour: data.reminderHour, reminder_minute: data.reminderMinute,
-        reminder_period: data.reminderPeriod, timezone: data.timezone, grace_period_minutes: data.gracePeriodMinutes,
-        frequency: data.frequency, custom_days: data.customDays, mood_check_enabled: data.moodCheckEnabled,
-        vacation_mode: data.vacationMode, vacation_from: data.vacationFrom || null, vacation_until: data.vacationUntil || null,
+        created_by: user.id,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone || null,
+        relationship: data.relationship || null,
+        date_of_birth: data.dateOfBirth || null,
+        notes: data.notes || null,
+        reminder_hour: data.reminderHour,
+        reminder_minute: data.reminderMinute,
+        reminder_period: data.reminderPeriod,
+        timezone: data.timezone,
+        grace_period_minutes: data.gracePeriodMinutes,
+        frequency: data.frequency,
+        custom_days: data.customDays,
+        mood_check_enabled: data.moodCheckEnabled,
+        vacation_mode: data.vacationMode,
+        vacation_from: data.vacationFrom || null,
+        vacation_until: data.vacationUntil || null,
       };
 
       let seniorId: string;
 
       if (isEdit && id) {
-        // UPDATE existing senior
         const { error: updateError } = await supabase
-          .from("managed_seniors")
+          .from("seniors")
           .update(payload)
           .eq("id", id);
         if (updateError) throw updateError;
         seniorId = id;
 
         // Delete existing contacts and re-insert
-        await supabase.from("managed_senior_contacts").delete().eq("managed_senior_id", id);
+        await supabase.from("emergency_contacts").delete().eq("senior_id", id);
       } else {
-        // INSERT new senior
         const { data: senior, error: seniorError } = await supabase
-          .from("managed_seniors")
+          .from("seniors")
           .insert(payload)
           .select().single();
         if (seniorError) throw seniorError;
         seniorId = senior.id;
+
+        // Also insert into families
+        await supabase.from("families").insert({
+          caregiver_id: user.id,
+          senior_id: seniorId,
+        });
       }
 
       if (data.contacts.length > 0) {
         const contactRows = data.contacts.map((c, i) => ({
-          managed_senior_id: seniorId, name: c.name, relationship: c.relationship || null,
-          phone: c.phone || null, email: c.email || null, notify_via_sms: c.notifyViaSms,
-          notify_via_email: c.notifyViaEmail, delay_minutes: c.delayMinutes, sort_order: i,
+          senior_id: seniorId,
+          name: c.name,
+          relationship: c.relationship || null,
+          phone: c.phone || "",
+          email: c.email || null,
+          notify_via_sms: c.notifyViaSms,
+          notify_via_email: c.notifyViaEmail,
+          delay_minutes: c.delayMinutes,
+          sort_order: i,
+          user_id: user.id,
         }));
-        const { error: contactError } = await supabase.from("managed_senior_contacts").insert(contactRows);
+        const { error: contactError } = await supabase.from("emergency_contacts").insert(contactRows);
         if (contactError) throw contactError;
       }
       setDirty(false);
@@ -189,10 +210,7 @@ export default function AddEditSeniorPage() {
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumbs handled by AppShell */}
-
       <WizardStepper currentStep={step} completedSteps={completedSteps} onStepClick={(s) => setStep(s)} allowJump={isEdit} />
-
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">{STEP_TITLES[step].title}</CardTitle>

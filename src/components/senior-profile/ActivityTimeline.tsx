@@ -40,9 +40,10 @@ export default function ActivityTimeline({ seniorUserId }: ActivityTimelineProps
     setLoading(true);
     setError(false);
     const { data, error: err } = await supabase
-      .from("daily_check_ins")
+      .from("check_ins")
       .select("id, check_date, checked_in_at")
       .eq("senior_id", seniorUserId)
+      .eq("status", "SAFE")
       .order("checked_in_at", { ascending: false })
       .limit(50);
 

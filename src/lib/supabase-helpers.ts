@@ -20,10 +20,11 @@ export async function createUserProfile(userId: string, fullName: string, role: 
   return { data, error };
 }
 
+/** Get today's check-in for a senior (by seniors.id) */
 export async function getTodayCheckIn(seniorId: string) {
   const today = new Date().toISOString().split("T")[0];
   const { data, error } = await supabase
-    .from("daily_check_ins")
+    .from("check_ins")
     .select("*")
     .eq("senior_id", seniorId)
     .eq("check_date", today)
@@ -31,13 +32,21 @@ export async function getTodayCheckIn(seniorId: string) {
   return { data, error };
 }
 
-export async function createCheckIn(seniorId: string) {
+/** Create/upsert a check-in for today */
+export async function createCheckIn(seniorId: string, mood?: string) {
   const today = new Date().toISOString().split("T")[0];
   const { data, error } = await supabase
-    .from("daily_check_ins")
-    .upsert({ senior_id: seniorId, check_date: today, checked_in_at: new Date().toISOString() }, {
-      onConflict: "senior_id,check_date",
-    })
+    .from("check_ins")
+    .upsert(
+      {
+        senior_id: seniorId,
+        check_date: today,
+        status: "SAFE",
+        mood: mood || null,
+        checked_in_at: new Date().toISOString(),
+      },
+      { onConflict: "senior_id,check_date" }
+    )
     .select()
     .single();
   return { data, error };
@@ -68,57 +77,36 @@ export async function upsertReminderSettings(
   return { data, error };
 }
 
-export async function getConnectedSeniors(caregiverId: string) {
-  const { data: connections, error } = await supabase
-    .from("senior_connections")
-    .select("*")
-    .eq("caregiver_id", caregiverId)
-    .eq("status", "active");
+/** Load seniors for a caregiver via the families table */
+export async function getCaregiversSeniors(caregiverId: string) {
+  const { data: families, error } = await supabase
+    .from("families")
+    .select("id, senior_id, created_at")
+    .eq("caregiver_id", caregiverId);
 
-  if (error || !connections || connections.length === 0) {
-    return { data: connections, error };
+  if (error || !families || families.length === 0) {
+    return { data: [], error };
   }
 
-  // Fetch profiles separately since there's no FK relationship
-  const seniorIds = connections.map((c) => c.senior_id);
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("user_id, full_name, role")
-    .in("user_id", seniorIds);
+  const seniorIds = families.map((f: any) => f.senior_id);
+  const { data: seniors } = await supabase
+    .from("seniors")
+    .select("*")
+    .in("id", seniorIds);
 
-  // Merge profiles into connections
-  const merged = connections.map((conn) => ({
-    ...conn,
-    profiles: profiles?.find((p) => p.user_id === conn.senior_id) || null,
+  const merged = families.map((f: any) => ({
+    family_id: f.id,
+    senior: (seniors || []).find((s: any) => s.id === f.senior_id) || null,
   }));
 
   return { data: merged, error: null };
 }
 
-export async function addSeniorConnection(caregiverId: string, seniorEmail: string) {
-  // First find the senior by looking up their profile via auth
-  const { data: profileData, error: profileError } = await supabase
-    .from("profiles")
-    .select("user_id, full_name, role")
-    .eq("role", "senior")
-    .ilike("full_name", `%${seniorEmail}%`)
-    .limit(5);
-  return { data: profileData, error: profileError };
-}
-
-export async function connectToSeniorById(caregiverId: string, seniorId: string) {
-  const { data, error } = await supabase
-    .from("senior_connections")
-    .insert({ caregiver_id: caregiverId, senior_id: seniorId, status: "active" })
-    .select()
-    .single();
-  return { data, error };
-}
-
+/** Get today's check-in status for a senior */
 export async function getSeniorCheckInStatus(seniorId: string) {
   const today = new Date().toISOString().split("T")[0];
   const { data } = await supabase
-    .from("daily_check_ins")
+    .from("check_ins")
     .select("*")
     .eq("senior_id", seniorId)
     .eq("check_date", today)
