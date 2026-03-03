@@ -370,19 +370,7 @@ export default function CaregiverDashboard() {
   const pendingCount = seniors.filter((s) => s.status === "pending" || s.status === "none").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
-  const allDemoAlerts = [
-    {
-      seniorId: "demo-alert-1",
-      name: "Dorothy Wilson",
-      dueTime: "9:00 AM",
-      overdueText: "1h 45min",
-      alertTime: "9:45 AM",
-      contactNotified: "Contact #1 has been notified",
-    },
-  ];
-  const demoAlerts = allDemoAlerts.filter(a => !resolvedAlerts.has(a.seniorId));
-  const alertCount = demoAlerts.length;
-  const missedCount = seniors.filter(s => s.status === "missed").length + alertCount;
+  const missedCount = seniors.filter(s => s.status === "missed").length;
 
   const getStatusBadge = (s: SeniorStatus) => {
     switch (s.status) {
@@ -431,7 +419,7 @@ export default function CaregiverDashboard() {
       {!loading && seniors.length > 0 && (
         <div data-tour="overview-banner">
           <TodayOverviewBanner
-            totalSeniors={seniors.length + alertCount}
+            totalSeniors={seniors.length}
             safeCount={safeCount}
             pendingCount={pendingCount}
             alertCount={missedCount}
@@ -472,25 +460,30 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
-      {/* Alert Banner */}
-      {alertCount > 0 && (
-        <AlertBanner
-          alertCount={alertCount}
-          seniorName={demoAlerts[0].name}
-          dueTime={demoAlerts[0].dueTime}
-          overdueText={demoAlerts[0].overdueText}
-          contactNotified={demoAlerts[0].contactNotified}
-          onViewSenior={() => navigate("/seniors/demo-alert-1/alert")}
-          onHandleThis={() => {
-            const id = demoAlerts[0].seniorId;
-            setResolvedAlerts(prev => new Set(prev).add(id));
-            const existing = JSON.parse(sessionStorage.getItem("resolved-alerts") || "[]");
-            if (!existing.includes(id)) {
-              existing.push(id);
-              sessionStorage.setItem("resolved-alerts", JSON.stringify(existing));
-            }
-          }}
-        />
+      {/* Alert Banner — only for real missed check-ins */}
+      {missedCount > 0 && (
+        <div className="space-y-3">
+          {seniors.filter(s => s.status === "missed").map((senior) => (
+            <AlertSeniorRow
+              key={senior.senior_id}
+              name={senior.full_name}
+              alertTime="—"
+              contactNotified="Escalation in progress"
+              onClick={() => navigate(`/seniors/${senior.senior_id}`)}
+            />
+          ))}
+        </div>
+      )}
+      {!loading && missedCount === 0 && seniors.length > 0 && (
+        <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+          <CheckCircle className="w-10 h-10" style={{ color: "hsl(var(--status-checked))" }} />
+          <div>
+            <p className="font-semibold text-base">All clear today</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-[280px] mx-auto">
+              No missed check-ins. Your seniors are being monitored.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Connection success toast */}
@@ -505,7 +498,7 @@ export default function CaregiverDashboard() {
       )}
 
       {/* Status summary */}
-      {(seniors.length > 0 || alertCount > 0) && (
+      {seniors.length > 0 && (
         <div>
           {statusFilter && (
             <div className="flex items-center justify-between mb-3">
@@ -529,7 +522,7 @@ export default function CaregiverDashboard() {
                 <Users className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-3xl font-black leading-none">{seniors.length + alertCount}</p>
+                <p className="text-3xl font-black leading-none">{seniors.length}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Total</p>
               </div>
             </button>
@@ -577,20 +570,6 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
-      {/* Alert senior rows */}
-      {alertCount > 0 && (
-        <div className="space-y-3">
-          {demoAlerts.map((alert) => (
-            <AlertSeniorRow
-              key={alert.seniorId}
-              name={alert.name}
-              alertTime={alert.alertTime}
-              contactNotified={alert.contactNotified}
-              onClick={() => navigate(`/seniors/${alert.seniorId}/alert`)}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Seniors list */}
       <div data-tour="seniors-list">
