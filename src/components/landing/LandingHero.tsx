@@ -47,7 +47,7 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
           <div className="grid grid-cols-3 gap-6 lg:gap-8">
             {[
               { value: "500+", label: "Families protected" },
-              { value: "47 days", label: "Average check-in streak" },
+              { value: "Real-Time Status", label: "For Families" },
               { value: "2 min", label: "Setup time" },
             ].map((s) => (
               <div key={s.label} className="text-center">
