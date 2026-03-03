@@ -14,12 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          senior_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          senior_id: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          senior_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_senior_id_fkey"
+            columns: ["senior_id"]
+            isOneToOne: false
+            referencedRelation: "seniors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caregiver_notes: {
         Row: {
           caregiver_id: string
           created_at: string
           id: string
           managed_senior_id: string
+          senior_id: string | null
           text: string
           updated_at: string
         }
@@ -28,6 +70,7 @@ export type Database = {
           created_at?: string
           id?: string
           managed_senior_id: string
+          senior_id?: string | null
           text: string
           updated_at?: string
         }
@@ -36,6 +79,7 @@ export type Database = {
           created_at?: string
           id?: string
           managed_senior_id?: string
+          senior_id?: string | null
           text?: string
           updated_at?: string
         }
@@ -45,6 +89,54 @@ export type Database = {
             columns: ["managed_senior_id"]
             isOneToOne: false
             referencedRelation: "managed_seniors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caregiver_notes_senior_id_fkey"
+            columns: ["senior_id"]
+            isOneToOne: false
+            referencedRelation: "seniors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      check_ins: {
+        Row: {
+          check_date: string
+          checked_in_at: string | null
+          created_at: string
+          id: string
+          mood: string | null
+          note: string | null
+          senior_id: string
+          status: string
+        }
+        Insert: {
+          check_date?: string
+          checked_in_at?: string | null
+          created_at?: string
+          id?: string
+          mood?: string | null
+          note?: string | null
+          senior_id: string
+          status?: string
+        }
+        Update: {
+          check_date?: string
+          checked_in_at?: string | null
+          created_at?: string
+          id?: string
+          mood?: string | null
+          note?: string | null
+          senior_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_senior_id_fkey"
+            columns: ["senior_id"]
+            isOneToOne: false
+            referencedRelation: "seniors"
             referencedColumns: ["id"]
           },
         ]
@@ -73,29 +165,84 @@ export type Database = {
       emergency_contacts: {
         Row: {
           created_at: string
+          delay_minutes: number
+          email: string | null
           id: string
           name: string
+          notify_via_email: boolean
+          notify_via_sms: boolean
           phone: string
           relationship: string | null
+          senior_id: string | null
+          sort_order: number
           user_id: string
         }
         Insert: {
           created_at?: string
+          delay_minutes?: number
+          email?: string | null
           id?: string
           name: string
+          notify_via_email?: boolean
+          notify_via_sms?: boolean
           phone: string
           relationship?: string | null
+          senior_id?: string | null
+          sort_order?: number
           user_id: string
         }
         Update: {
           created_at?: string
+          delay_minutes?: number
+          email?: string | null
           id?: string
           name?: string
+          notify_via_email?: boolean
+          notify_via_sms?: boolean
           phone?: string
           relationship?: string | null
+          senior_id?: string | null
+          sort_order?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "emergency_contacts_senior_id_fkey"
+            columns: ["senior_id"]
+            isOneToOne: false
+            referencedRelation: "seniors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      families: {
+        Row: {
+          caregiver_id: string
+          created_at: string
+          id: string
+          senior_id: string
+        }
+        Insert: {
+          caregiver_id: string
+          created_at?: string
+          id?: string
+          senior_id: string
+        }
+        Update: {
+          caregiver_id?: string
+          created_at?: string
+          id?: string
+          senior_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "families_senior_id_fkey"
+            columns: ["senior_id"]
+            isOneToOne: false
+            referencedRelation: "seniors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       favorite_sounds: {
         Row: {
@@ -396,6 +543,84 @@ export type Database = {
           id?: string
           senior_id?: string
           status?: string
+        }
+        Relationships: []
+      }
+      seniors: {
+        Row: {
+          created_at: string
+          created_by: string
+          custom_days: string[] | null
+          date_of_birth: string | null
+          first_name: string
+          frequency: string
+          grace_period_minutes: number
+          id: string
+          last_name: string
+          mood_check_enabled: boolean
+          notes: string | null
+          phone: string | null
+          registration_code: string | null
+          relationship: string | null
+          reminder_hour: string
+          reminder_minute: string
+          reminder_period: string
+          timezone: string
+          updated_at: string
+          user_id: string | null
+          vacation_from: string | null
+          vacation_mode: boolean
+          vacation_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          custom_days?: string[] | null
+          date_of_birth?: string | null
+          first_name: string
+          frequency?: string
+          grace_period_minutes?: number
+          id?: string
+          last_name: string
+          mood_check_enabled?: boolean
+          notes?: string | null
+          phone?: string | null
+          registration_code?: string | null
+          relationship?: string | null
+          reminder_hour?: string
+          reminder_minute?: string
+          reminder_period?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string | null
+          vacation_from?: string | null
+          vacation_mode?: boolean
+          vacation_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          custom_days?: string[] | null
+          date_of_birth?: string | null
+          first_name?: string
+          frequency?: string
+          grace_period_minutes?: number
+          id?: string
+          last_name?: string
+          mood_check_enabled?: boolean
+          notes?: string | null
+          phone?: string | null
+          registration_code?: string | null
+          relationship?: string | null
+          reminder_hour?: string
+          reminder_minute?: string
+          reminder_period?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string | null
+          vacation_from?: string | null
+          vacation_mode?: boolean
+          vacation_until?: string | null
         }
         Relationships: []
       }

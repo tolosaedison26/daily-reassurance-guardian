@@ -28,9 +28,10 @@ export default function SeniorActivityPanel({ seniorId, onClose }: SeniorActivit
 
     const [checkInsRes, voiceRes] = await Promise.all([
       supabase
-        .from("daily_check_ins")
+        .from("check_ins")
         .select("id, checked_in_at")
         .eq("senior_id", seniorId)
+        .eq("status", "SAFE")
         .order("checked_in_at", { ascending: false })
         .limit(20),
       supabase.from("voice_messages")
