@@ -45,9 +45,10 @@ export default function ActivityPanel({ caregiverId, seniors, onClose }: Activit
 
     const [checkInsRes, voiceRes] = await Promise.all([
       supabase
-        .from("daily_check_ins")
+        .from("check_ins")
         .select("id, senior_id, checked_in_at")
         .in("senior_id", seniorIds)
+        .eq("status", "SAFE")
         .order("checked_in_at", { ascending: false })
         .limit(20),
       (supabase.from as any)("voice_messages")
@@ -85,11 +86,7 @@ export default function ActivityPanel({ caregiverId, seniors, onClose }: Activit
   const playVoiceMessage = async (activity: Activity) => {
     if (!activity.audio_path) return;
     setPlayingId(activity.id);
-
-    const { data } = await supabase.storage
-      .from("voice-messages")
-      .createSignedUrl(activity.audio_path, 3600);
-
+    const { data } = await supabase.storage.from("voice-messages").createSignedUrl(activity.audio_path, 3600);
     if (data?.signedUrl) {
       const audio = new Audio(data.signedUrl);
       audio.play();
@@ -112,29 +109,17 @@ export default function ActivityPanel({ caregiverId, seniors, onClose }: Activit
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.45)" }}>
-      {/* Backdrop tap to close */}
       <div className="flex-1" onClick={onClose} />
-
-      {/* Panel */}
-      <div
-        className="rounded-t-3xl bg-background shadow-xl flex flex-col animate-slide-up"
-        style={{ maxHeight: "82vh" }}
-      >
-        {/* Header */}
+      <div className="rounded-t-3xl bg-background shadow-xl flex flex-col animate-slide-up" style={{ maxHeight: "82vh" }}>
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
           <div>
             <h2 className="text-xl font-black">Recent Activity</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Updates from your loved ones</p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
-          >
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
-
-        {/* Activity list */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {loading ? (
             <div className="flex items-center justify-center h-32">
@@ -147,54 +132,22 @@ export default function ActivityPanel({ caregiverId, seniors, onClose }: Activit
             </div>
           ) : (
             activities.map((activity) => (
-              <div
-                key={`${activity.type}-${activity.id}`}
-                className="flex items-center gap-4 bg-card rounded-2xl p-4 border border-border shadow-card"
-              >
-                {/* Icon */}
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                  style={{
-                    backgroundColor:
-                      activity.type === "check_in"
-                        ? "hsl(var(--status-checked) / 0.12)"
-                        : "hsl(var(--primary) / 0.12)",
-                  }}
-                >
+              <div key={`${activity.type}-${activity.id}`} className="flex items-center gap-4 bg-card rounded-2xl p-4 border border-border shadow-card">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: activity.type === "check_in" ? "hsl(var(--status-checked) / 0.12)" : "hsl(var(--primary) / 0.12)" }}>
                   {activity.type === "check_in" ? (
-                    <CheckCircle
-                      className="w-5 h-5"
-                      style={{ color: "hsl(var(--status-checked))" }}
-                    />
+                    <CheckCircle className="w-5 h-5" style={{ color: "hsl(var(--status-checked))" }} />
                   ) : (
                     <Mic className="w-5 h-5" style={{ color: "hsl(var(--primary))" }} />
                   )}
                 </div>
-
-                {/* Text */}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{activity.senior_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {activity.type === "check_in"
-                      ? "✅ Checked in"
-                      : "🎙 Sent a voice message"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{activity.type === "check_in" ? "✅ Checked in" : "🎙 Sent a voice message"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(activity.created_at)}</p>
                 </div>
-
-                {/* Play button for voice */}
                 {activity.type === "voice_message" && (
-                  <button
-                    onClick={() => playVoiceMessage(activity)}
-                    disabled={playingId === activity.id}
-                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: "hsl(var(--primary))" }}
-                  >
-                    {playingId === activity.id ? (
-                      <Loader className="w-4 h-4 text-white animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4 text-white ml-0.5" />
-                    )}
+                  <button onClick={() => playVoiceMessage(activity)} disabled={playingId === activity.id} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "hsl(var(--primary))" }}>
+                    {playingId === activity.id ? <Loader className="w-4 h-4 text-white animate-spin" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
                   </button>
                 )}
               </div>

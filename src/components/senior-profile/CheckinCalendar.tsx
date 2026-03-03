@@ -39,9 +39,10 @@ export default function CheckinCalendar({ seniorUserId }: CheckinCalendarProps) 
     const endDate = format(new Date(year, month, getDaysInMonth(new Date(year, month))), "yyyy-MM-dd");
 
     supabase
-      .from("daily_check_ins")
+      .from("check_ins")
       .select("check_date, checked_in_at")
       .eq("senior_id", seniorUserId)
+      .eq("status", "SAFE")
       .gte("check_date", startDate)
       .lte("check_date", endDate)
       .then(({ data }) => {

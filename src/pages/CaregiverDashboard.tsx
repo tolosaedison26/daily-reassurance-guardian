@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getConnectedSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
+import { getCaregiversSeniors, getSeniorCheckInStatus } from "@/lib/supabase-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Clock, Users, Plus, BellRing, AlertTriangle, Pencil, PhoneCall } from "lucide-react";
@@ -24,49 +24,35 @@ import { SeniorsHelpButton, DashboardHelpButton } from "@/components/HelpModalsC
 import { Loader2 as Loader2Icon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-interface ManagedSeniorData {
-  id: string;
-  first_name: string;
-  last_name: string;
-  vacation_mode?: boolean;
-  vacation_from?: string | null;
-  vacation_until?: string | null;
-  reminder_hour?: string;
-  reminder_minute?: string;
-  reminder_period?: string;
-  grace_period_minutes?: number;
-  frequency?: string;
-  custom_days?: string[] | null;
-  caregiver_id: string;
-  created_at: string;
-  claimed_by?: string | null;
-}
-
 interface SeniorStatus {
-  connection_id: string;
+  family_id: string;
   senior_id: string;
   full_name: string;
   status: "safe" | "pending" | "missed" | "paused" | "none";
   last_check_in: string | null;
-  is_managed?: boolean;
   relationship?: string | null;
   contact_count?: number;
 }
 
-function deriveManagedStatus(ms: ManagedSeniorData, hasCheckedInToday: boolean): "safe" | "pending" | "missed" | "paused" | "none" {
+function deriveStatus(senior: any, todayCheckIn: any): "safe" | "pending" | "missed" | "paused" | "none" {
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
-  if (ms.vacation_mode && ms.vacation_from && ms.vacation_until) {
-    if (todayStr >= ms.vacation_from && todayStr <= ms.vacation_until) return "paused";
+
+  if (senior.vacation_mode && senior.vacation_from && senior.vacation_until) {
+    if (todayStr >= senior.vacation_from && todayStr <= senior.vacation_until) return "paused";
   }
-  if (hasCheckedInToday) return "safe";
-  const reminderHour = parseInt(ms.reminder_hour || "9");
-  const isPM = ms.reminder_period === "PM";
+
+  if (todayCheckIn?.status === "SAFE") return "safe";
+  if (todayCheckIn?.status === "MISSED") return "missed";
+
+  const reminderHour = parseInt(senior.reminder_hour || "9");
+  const isPM = senior.reminder_period === "PM";
   const actualHour = isPM && reminderHour !== 12 ? reminderHour + 12 : (!isPM && reminderHour === 12 ? 0 : reminderHour);
-  const reminderMinute = parseInt(ms.reminder_minute || "0");
-  const graceMinutes = ms.grace_period_minutes || 60;
+  const reminderMinute = parseInt(senior.reminder_minute || "0");
+  const graceMinutes = senior.grace_period_minutes || 60;
   const nowMinutes = today.getHours() * 60 + today.getMinutes();
   const reminderMinutes = actualHour * 60 + reminderMinute;
+
   if (nowMinutes < reminderMinutes) return "none";
   if (nowMinutes < reminderMinutes + graceMinutes) return "pending";
   return "missed";
@@ -122,10 +108,8 @@ export default function CaregiverDashboard() {
     if (!onboardingDone) {
       setShowWizard(true);
     } else {
-      // Check tour
       const tourDone = localStorage.getItem(`tour_complete_${user.id}`);
       if (!tourDone) {
-        // Delay tour slightly to let dashboard render
         setTimeout(() => setShowTour(true), 800);
       }
     }
@@ -141,7 +125,7 @@ export default function CaregiverDashboard() {
 
     const channel = supabase
       .channel("caregiver-checkins")
-      .on("postgres_changes", { event: "*", schema: "public", table: "daily_check_ins" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "check_ins" }, () => {
         loadSeniors();
       })
       .subscribe();
@@ -158,79 +142,53 @@ export default function CaregiverDashboard() {
   const loadSeniors = async () => {
     if (!user) return;
     setLoading(true);
-    const { data: connections } = await getConnectedSeniors(user.id);
-    const connectedStatuses: SeniorStatus[] = connections
-      ? await Promise.all(
-          connections.map(async (conn: any) => {
-            const checkIn = await getSeniorCheckInStatus(conn.senior_id);
-            const p = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
-            return {
-              connection_id: conn.id,
-              senior_id: conn.senior_id,
-              full_name: p?.full_name || "Unknown",
-              status: checkIn ? ("safe" as const) : ("pending" as const),
-              last_check_in: checkIn
-                ? new Date(checkIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                : null,
-            };
-          })
-        )
-      : [];
 
-    const { data: managed } = await supabase
-      .from("managed_seniors")
-      .select("*")
-      .eq("caregiver_id", user.id)
-      .order("created_at", { ascending: false });
+    const { data: familyData } = await getCaregiversSeniors(user.id);
 
-    const managedStatuses: SeniorStatus[] = await Promise.all(
-      (managed || []).map(async (ms: any) => {
-        let hasCheckedIn = false;
-        if (ms.claimed_by) {
-          const today = new Date().toISOString().split("T")[0];
-          const { data: checkIn } = await supabase
-            .from("daily_check_ins")
-            .select("id")
-            .eq("senior_id", ms.claimed_by)
-            .eq("check_date", today)
-            .maybeSingle();
-          hasCheckedIn = !!checkIn;
-        }
+    const statuses: SeniorStatus[] = await Promise.all(
+      (familyData || []).map(async (entry: any) => {
+        const senior = entry.senior;
+        if (!senior) return null;
+
+        const todayCheckIn = await getSeniorCheckInStatus(senior.id);
+        const status = deriveStatus(senior, todayCheckIn);
+
         const { count } = await supabase
-          .from("managed_senior_contacts")
+          .from("emergency_contacts")
           .select("id", { count: "exact", head: true })
-          .eq("managed_senior_id", ms.id);
+          .eq("senior_id", senior.id);
 
-        const status = deriveManagedStatus(ms as ManagedSeniorData, hasCheckedIn);
         return {
-          connection_id: ms.id,
-          senior_id: ms.id,
-          full_name: `${ms.first_name} ${ms.last_name}`,
+          family_id: entry.family_id,
+          senior_id: senior.id,
+          full_name: `${senior.first_name} ${senior.last_name}`,
           status,
-          last_check_in: null,
-          is_managed: true,
-          relationship: ms.relationship,
+          last_check_in: todayCheckIn?.checked_in_at
+            ? new Date(todayCheckIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : null,
+          relationship: senior.relationship,
           contact_count: count || 0,
         };
       })
     );
 
+    const filtered = statuses.filter(Boolean) as SeniorStatus[];
     const urgency: Record<string, number> = { missed: 0, pending: 1, paused: 2, none: 3, safe: 4 };
-    const allSeniors = [...connectedStatuses, ...managedStatuses].sort(
-      (a, b) => (urgency[a.status] ?? 3) - (urgency[b.status] ?? 3)
-    );
+    filtered.sort((a, b) => (urgency[a.status] ?? 3) - (urgency[b.status] ?? 3));
 
-    setSeniors(allSeniors);
+    setSeniors(filtered);
     setLoading(false);
   };
 
   const handleWizardComplete = async (data: any) => {
     if (!user) return;
     setWizardSaving(true);
+
+    // Insert into seniors table
     const { data: senior, error } = await supabase
-      .from("managed_seniors")
+      .from("seniors")
       .insert({
-        caregiver_id: user.id,
+        created_by: user.id,
         first_name: data.firstName,
         last_name: data.lastName,
         phone: data.phone,
@@ -244,19 +202,29 @@ export default function CaregiverDashboard() {
       .select()
       .single();
 
-    if (senior && data.contacts.length > 0) {
-      const contactInserts = data.contacts.map((c: any, i: number) => ({
-        managed_senior_id: senior.id,
-        name: c.name,
-        relationship: c.relationship || null,
-        phone: c.phone || null,
-        email: c.email || null,
-        notify_via_sms: c.notifyViaSms,
-        notify_via_email: c.notifyViaEmail,
-        sort_order: i,
-        delay_minutes: i === 0 ? 0 : i === 1 ? 30 : 60,
-      }));
-      await supabase.from("managed_senior_contacts").insert(contactInserts);
+    if (senior) {
+      // Insert into families
+      await supabase.from("families").insert({
+        caregiver_id: user.id,
+        senior_id: senior.id,
+      });
+
+      // Insert emergency contacts
+      if (data.contacts.length > 0) {
+        const contactInserts = data.contacts.map((c: any, i: number) => ({
+          senior_id: senior.id,
+          name: c.name,
+          phone: c.phone || "",
+          relationship: c.relationship || null,
+          email: c.email || null,
+          notify_via_sms: c.notifyViaSms,
+          notify_via_email: c.notifyViaEmail,
+          sort_order: i,
+          delay_minutes: i === 0 ? 0 : i === 1 ? 30 : 60,
+          user_id: user.id,
+        }));
+        await supabase.from("emergency_contacts").insert(contactInserts);
+      }
     }
 
     setWizardData({ ...data, seniorId: senior?.id });
@@ -275,7 +243,6 @@ export default function CaregiverDashboard() {
     setWizardComplete(false);
     setWizardData(null);
     loadSeniors();
-    // Trigger tour after onboarding
     setTimeout(() => setShowTour(true), 800);
   };
 
@@ -284,20 +251,14 @@ export default function CaregiverDashboard() {
     setShowTour(false);
   };
 
-  // Show wizard
   if (showWizard) {
     return (
       <div className="fixed inset-0 z-50 bg-background">
-        <SetupWizard
-          onComplete={handleWizardComplete}
-          onSkip={handleWizardSkip}
-          saving={wizardSaving}
-        />
+        <SetupWizard onComplete={handleWizardComplete} onSkip={handleWizardSkip} saving={wizardSaving} />
       </div>
     );
   }
 
-  // Show completion screen
   if (wizardComplete && wizardData) {
     return (
       <div className="fixed inset-0 z-50 bg-background">
@@ -335,12 +296,9 @@ export default function CaregiverDashboard() {
     setConnecting(false);
   };
 
-  const handleDisconnect = async (connectionId: string) => {
-    setDisconnecting(connectionId);
-    await supabase
-      .from("senior_connections")
-      .update({ status: "inactive" })
-      .eq("id", connectionId);
+  const handleDisconnect = async (familyId: string) => {
+    setDisconnecting(familyId);
+    await supabase.from("families").delete().eq("id", familyId);
     await loadSeniors();
     setDisconnecting(null);
   };
@@ -350,8 +308,11 @@ export default function CaregiverDashboard() {
     setMarkingSafe(senior.senior_id);
     setSeniors(prev => prev.map(s => s.senior_id === senior.senior_id ? { ...s, status: "safe" as const } : s));
     try {
-      const key = `marked_safe_${new Date().toISOString().split("T")[0]}_${senior.senior_id}`;
-      localStorage.setItem(key, "true");
+      const today = new Date().toISOString().split("T")[0];
+      await supabase.from("check_ins").upsert(
+        { senior_id: senior.senior_id, check_date: today, status: "SAFE", checked_in_at: new Date().toISOString() },
+        { onConflict: "senior_id,check_date" }
+      );
       toast({ title: `${senior.full_name} marked as safe for today.` });
     } catch {
       setSeniors(prev => prev.map(s => s.senior_id === senior.senior_id ? { ...s, status: prevStatus } : s));
@@ -362,14 +323,12 @@ export default function CaregiverDashboard() {
   };
 
   const isSafeToday = (seniorId: string) => {
-    const key = `marked_safe_${new Date().toISOString().split("T")[0]}_${seniorId}`;
-    return localStorage.getItem(key) === "true";
+    return seniors.find(s => s.senior_id === seniorId)?.status === "safe";
   };
 
   const safeCount = seniors.filter((s) => s.status === "safe").length;
   const pendingCount = seniors.filter((s) => s.status === "pending" || s.status === "none").length;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
-
   const missedCount = seniors.filter(s => s.status === "missed").length;
 
   const getStatusBadge = (s: SeniorStatus) => {
@@ -391,15 +350,13 @@ export default function CaregiverDashboard() {
   };
 
   const seniorsWithoutContacts = seniors
-    .filter(s => s.is_managed && (s.contact_count === 0 || s.contact_count === undefined))
+    .filter(s => (s.contact_count === 0 || s.contact_count === undefined))
     .map(s => ({ id: s.senior_id, name: s.full_name }));
 
   return (
     <div className="space-y-5">
-      {/* Tour */}
       {showTour && <DashboardTour onComplete={handleTourComplete} />}
 
-      {/* Greeting */}
       <div>
         <div className="flex items-center gap-1">
           <h1 className="text-3xl font-black leading-tight">Hi {firstName}! 👋</h1>
@@ -410,30 +367,19 @@ export default function CaregiverDashboard() {
         </p>
       </div>
 
-      {/* Setup nudge banner */}
       {!loading && seniorsWithoutContacts.length > 0 && (
         <SetupNudgeBanner seniorsWithoutContacts={seniorsWithoutContacts} />
       )}
 
-      {/* Today's Overview Banner */}
       {!loading && seniors.length > 0 && (
         <div data-tour="overview-banner">
-          <TodayOverviewBanner
-            totalSeniors={seniors.length}
-            safeCount={safeCount}
-            pendingCount={pendingCount}
-            alertCount={missedCount}
-          />
+          <TodayOverviewBanner totalSeniors={seniors.length} safeCount={safeCount} pendingCount={pendingCount} alertCount={missedCount} />
         </div>
       )}
 
-      {/* Push notification prompt */}
       {notifPermission === "default" && (
         <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3">
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "hsl(var(--primary) / 0.12)" }}
-          >
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--primary) / 0.12)" }}>
             <BellRing className="w-5 h-5" style={{ color: "hsl(var(--primary))" }} />
           </div>
           <div className="flex-1 min-w-0">
@@ -460,7 +406,6 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
-      {/* Alert Banner — only for real missed check-ins */}
       {missedCount > 0 && (
         <div className="space-y-3">
           {seniors.filter(s => s.status === "missed").map((senior) => (
@@ -479,14 +424,11 @@ export default function CaregiverDashboard() {
           <CheckCircle className="w-10 h-10" style={{ color: "hsl(var(--status-checked))" }} />
           <div>
             <p className="font-semibold text-base">All clear today</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-[280px] mx-auto">
-              No missed check-ins. Your seniors are being monitored.
-            </p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-[280px] mx-auto">No missed check-ins. Your seniors are being monitored.</p>
           </div>
         </div>
       )}
 
-      {/* Connection success toast */}
       {connectSuccess && (
         <div className="bg-card rounded-2xl p-4 border border-border shadow-card flex items-center gap-3 animate-bounce-in">
           <span className="text-2xl">🎉</span>
@@ -497,7 +439,6 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
-      {/* Status summary */}
       {seniors.length > 0 && (
         <div>
           {statusFilter && (
@@ -505,19 +446,11 @@ export default function CaregiverDashboard() {
               <p className="text-sm font-bold text-muted-foreground">
                 Showing: <span className="capitalize text-foreground">{statusFilter}</span>
               </p>
-              <button
-                onClick={() => setStatusFilter(null)}
-                className="text-xs font-bold text-primary hover:underline"
-              >
-                Show All
-              </button>
+              <button onClick={() => setStatusFilter(null)} className="text-xs font-bold text-primary hover:underline">Show All</button>
             </div>
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button
-              onClick={() => setStatusFilter(statusFilter === "total" ? null : "total")}
-              className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "total" ? "ring-2 ring-primary" : "border-border"}`}
-            >
+            <button onClick={() => setStatusFilter(statusFilter === "total" ? null : "total")} className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "total" ? "ring-2 ring-primary" : "border-border"}`}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--muted))" }}>
                 <Users className="w-6 h-6 text-muted-foreground" />
               </div>
@@ -526,10 +459,7 @@ export default function CaregiverDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">Total</p>
               </div>
             </button>
-            <button
-              onClick={() => setStatusFilter(statusFilter === "safe" ? null : "safe")}
-              className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "safe" ? "ring-2 ring-primary" : "border-border"}`}
-            >
+            <button onClick={() => setStatusFilter(statusFilter === "safe" ? null : "safe")} className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "safe" ? "ring-2 ring-primary" : "border-border"}`}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-checked) / 0.12)" }}>
                 <CheckCircle className="w-6 h-6" style={{ color: "hsl(var(--status-checked))" }} />
               </div>
@@ -538,10 +468,7 @@ export default function CaregiverDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">✓ Safe</p>
               </div>
             </button>
-            <button
-              onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
-              className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "pending" ? "ring-2 ring-primary" : "border-border"}`}
-            >
+            <button onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")} className={`bg-card rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "pending" ? "ring-2 ring-primary" : "border-border"}`}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-pending) / 0.12)" }}>
                 <XCircle className="w-6 h-6" style={{ color: "hsl(var(--status-pending))" }} />
               </div>
@@ -550,14 +477,7 @@ export default function CaregiverDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">⏳ Pending</p>
               </div>
             </button>
-            <button
-              onClick={() => setStatusFilter(statusFilter === "alert" ? null : "alert")}
-              className={`rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "alert" ? "ring-2 ring-primary" : ""}`}
-              style={{
-                background: missedCount > 0 ? "hsl(var(--status-alert) / 0.06)" : "hsl(var(--card))",
-                borderColor: statusFilter === "alert" ? undefined : (missedCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))"),
-              }}
-            >
+            <button onClick={() => setStatusFilter(statusFilter === "alert" ? null : "alert")} className={`rounded-2xl p-4 border shadow-card flex items-center gap-3 text-left transition-all ${statusFilter === "alert" ? "ring-2 ring-primary" : ""}`} style={{ background: missedCount > 0 ? "hsl(var(--status-alert) / 0.06)" : "hsl(var(--card))", borderColor: statusFilter === "alert" ? undefined : (missedCount > 0 ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))") }}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "hsl(var(--status-alert) / 0.12)" }}>
                 <AlertTriangle className="w-6 h-6" style={{ color: "hsl(var(--status-alert))" }} />
               </div>
@@ -570,8 +490,6 @@ export default function CaregiverDashboard() {
         </div>
       )}
 
-
-      {/* Seniors list */}
       <div data-tour="seniors-list">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1">
@@ -582,55 +500,27 @@ export default function CaregiverDashboard() {
         {loading ? (
           <SeniorListSkeleton />
         ) : seniors.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No loved ones added yet"
-            description="Add your first senior to start daily check-ins."
-            actionLabel="Add Senior"
-            onAction={() => navigate("/seniors/new")}
-          />
+          <EmptyState icon={Users} title="No loved ones added yet" description="Add your first senior to start daily check-ins." actionLabel="Add Senior" onAction={() => navigate("/seniors/new")} />
         ) : (
           <div className="space-y-3">
             {seniors.filter(filterSenior).map((senior) => {
               const isSelected = location.pathname === `/seniors/${senior.senior_id}`;
               return (
                 <Link
-                  key={senior.connection_id}
+                  key={senior.family_id}
                   to={`/seniors/${senior.senior_id}`}
-                  className={`block bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-all hover:bg-muted/50 relative no-underline ${
-                    isSelected ? "border-l-4 bg-primary/5" : ""
-                  }`}
-                  style={{
-                    borderColor: isSelected
-                      ? "hsl(var(--primary))"
-                      : senior.status === "safe"
-                      ? "hsl(var(--status-checked) / 0.3)"
-                      : senior.status === "missed"
-                      ? "hsl(var(--status-alert) / 0.3)"
-                      : "hsl(var(--border))",
-                  }}
+                  className={`block bg-card rounded-2xl p-5 border shadow-card cursor-pointer active:scale-[0.98] transition-all hover:bg-muted/50 relative no-underline ${isSelected ? "border-l-4 bg-primary/5" : ""}`}
+                  style={{ borderColor: isSelected ? "hsl(var(--primary))" : senior.status === "safe" ? "hsl(var(--status-checked) / 0.3)" : senior.status === "missed" ? "hsl(var(--status-alert) / 0.3)" : "hsl(var(--border))" }}
                 >
                   <div className="flex items-center gap-4">
-                    <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shrink-0"
-                      style={{
-                        background: senior.status === "safe" ? "hsl(var(--status-checked) / 0.12)"
-                          : senior.status === "missed" ? "hsl(var(--status-alert) / 0.12)"
-                          : "hsl(var(--muted))",
-                        color: senior.status === "safe" ? "hsl(var(--status-checked))"
-                          : senior.status === "missed" ? "hsl(var(--status-alert))"
-                          : "hsl(var(--muted-foreground))",
-                      }}
-                    >
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shrink-0" style={{ background: senior.status === "safe" ? "hsl(var(--status-checked) / 0.12)" : senior.status === "missed" ? "hsl(var(--status-alert) / 0.12)" : "hsl(var(--muted))", color: senior.status === "safe" ? "hsl(var(--status-checked))" : senior.status === "missed" ? "hsl(var(--status-alert))" : "hsl(var(--muted-foreground))" }}>
                       {senior.full_name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-black text-lg leading-tight truncate text-foreground">{senior.full_name}</p>
-                        {senior.relationship && (
-                          <span className="text-xs text-muted-foreground">· {senior.relationship}</span>
-                        )}
-                        {senior.is_managed && senior.contact_count === 0 && (
+                        {senior.relationship && <span className="text-xs text-muted-foreground">· {senior.relationship}</span>}
+                        {senior.contact_count === 0 && (
                           <span title="No emergency contacts set up" className="shrink-0">
                             <AlertTriangle className="w-4 h-4" style={{ color: "hsl(var(--status-pending))" }} />
                           </span>
@@ -639,32 +529,21 @@ export default function CaregiverDashboard() {
                       {senior.status === "safe" && senior.last_check_in ? (
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: "hsl(var(--status-checked))" }} />
-                          <p className="text-sm" style={{ color: "hsl(var(--status-checked))" }}>
-                            Checked in at {senior.last_check_in}
-                          </p>
+                          <p className="text-sm" style={{ color: "hsl(var(--status-checked))" }}>Checked in at {senior.last_check_in}</p>
                         </div>
                       ) : senior.status === "missed" ? (
-                        <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-alert))" }}>
-                          Missed today's check-in
-                        </p>
+                        <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-alert))" }}>Missed today's check-in</p>
                       ) : senior.status === "paused" ? (
                         <p className="text-sm mt-0.5 text-muted-foreground">Check-ins paused</p>
                       ) : (
-                        <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-pending))" }}>
-                          Has <strong>not</strong> checked in yet today
-                        </p>
+                        <p className="text-sm mt-0.5" style={{ color: "hsl(var(--status-pending))" }}>Has <strong>not</strong> checked in yet today</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Mark Safe button */}
                       {senior.status === "safe" || isSafeToday(senior.senior_id) ? (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
-                          Already Safe Today ✓
-                        </span>
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground whitespace-nowrap">Already Safe Today ✓</span>
                       ) : senior.status === "paused" ? (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
-                          Check-ins Paused
-                        </span>
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground whitespace-nowrap">Check-ins Paused</span>
                       ) : (
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMarkSafe(senior); }}
@@ -674,20 +553,16 @@ export default function CaregiverDashboard() {
                         >
                           {markingSafe === senior.senior_id ? (
                             <span className="flex items-center gap-1"><Loader2Icon className="w-3 h-3 animate-spin" /> Marking…</span>
-                          ) : (
-                            "Mark Safe ✓"
-                          )}
+                          ) : "Mark Safe ✓"}
                         </button>
                       )}
-                      {senior.is_managed && (
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
-                          className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                          aria-label={`Contacts for ${senior.full_name}`}
-                        >
-                          <PhoneCall className="w-3.5 h-3.5 text-muted-foreground" />
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/contacts`); }}
+                        className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                        aria-label={`Contacts for ${senior.full_name}`}
+                      >
+                        <PhoneCall className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/seniors/${senior.senior_id}/edit`); }}
                         className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
@@ -696,15 +571,6 @@ export default function CaregiverDashboard() {
                         <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
                       <StatusBadge status={getStatusBadge(senior)} />
-                      {!senior.is_managed && (
-                        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                          <DisconnectSeniorDialog
-                            seniorName={senior.full_name}
-                            onConfirm={() => handleDisconnect(senior.connection_id)}
-                            disconnecting={disconnecting === senior.connection_id}
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
                 </Link>
@@ -719,64 +585,25 @@ export default function CaregiverDashboard() {
         {seniors.length === 0 && !loading ? (
           <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
             <p className="font-black text-base mb-1">Enter Invite Code</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.
-            </p>
-            <Input
-              placeholder="e.g. PARK-7291"
-              value={inviteCode}
-              onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")); setConnectError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()}
-              className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3"
-              maxLength={9}
-              autoCapitalize="characters"
-            />
-            {connectError && (
-              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">{connectError}</div>
-            )}
-            <Button
-              onClick={handleConnectWithCode}
-              disabled={connecting || inviteCode.trim().length < 4}
-              className="w-full h-12 font-black rounded-xl border-0 text-base"
-              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
-            >
+            <p className="text-sm text-muted-foreground mb-4">Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.</p>
+            <Input placeholder="e.g. PARK-7291" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")); setConnectError(""); }} onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()} className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3" maxLength={9} autoCapitalize="characters" />
+            {connectError && <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">{connectError}</div>}
+            <Button onClick={handleConnectWithCode} disabled={connecting || inviteCode.trim().length < 4} className="w-full h-12 font-black rounded-xl border-0 text-base" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>
               {connecting ? "Connecting…" : "Connect ✓"}
             </Button>
           </div>
         ) : (
           <>
-            <Button
-              onClick={() => { setShowSearch(!showSearch); setConnectError(""); }}
-              className="w-full h-14 text-base font-black rounded-2xl border-0 shadow-btn"
-              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Another Loved One
+            <Button onClick={() => { setShowSearch(!showSearch); setConnectError(""); }} className="w-full h-14 text-base font-black rounded-2xl border-0 shadow-btn" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>
+              <Plus className="w-5 h-5 mr-2" /> Add Another Loved One
             </Button>
             {showSearch && (
               <div className="mt-3 bg-card rounded-2xl p-5 border border-border shadow-card animate-bounce-in">
                 <p className="font-black text-base mb-1">Enter Invite Code</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.
-                </p>
-                <Input
-                  placeholder="e.g. PARK-7291"
-                  value={inviteCode}
-                  onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")); setConnectError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()}
-                  className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3"
-                  maxLength={9}
-                  autoCapitalize="characters"
-                />
-                {connectError && (
-                  <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">{connectError}</div>
-                )}
-                <Button
-                  onClick={handleConnectWithCode}
-                  disabled={connecting || inviteCode.trim().length < 4}
-                  className="w-full h-12 font-black rounded-xl border-0 text-base"
-                  style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
-                >
+                <p className="text-sm text-muted-foreground mb-4">Ask your loved one to open the app, tap <strong>"Connect Family"</strong> and share their code with you.</p>
+                <Input placeholder="e.g. PARK-7291" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")); setConnectError(""); }} onKeyDown={(e) => e.key === "Enter" && handleConnectWithCode()} className="h-16 rounded-xl text-2xl font-black text-center tracking-widest mb-3" maxLength={9} autoCapitalize="characters" />
+                {connectError && <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold mb-3">{connectError}</div>}
+                <Button onClick={handleConnectWithCode} disabled={connecting || inviteCode.trim().length < 4} className="w-full h-12 font-black rounded-xl border-0 text-base" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>
                   {connecting ? "Connecting…" : "Connect ✓"}
                 </Button>
               </div>
@@ -786,18 +613,10 @@ export default function CaregiverDashboard() {
       </div>
 
       {showActivity && user && (
-        <ActivityPanel
-          caregiverId={user.id}
-          seniors={seniors.map((s) => ({ senior_id: s.senior_id, full_name: s.full_name }))}
-          onClose={() => setShowActivity(false)}
-        />
+        <ActivityPanel caregiverId={user.id} seniors={seniors.map((s) => ({ senior_id: s.senior_id, full_name: s.full_name }))} onClose={() => setShowActivity(false)} />
       )}
       {historyTarget && (
-        <CheckInHistoryPanel
-          seniorId={historyTarget.seniorId}
-          seniorName={historyTarget.name}
-          onClose={() => setHistoryTarget(null)}
-        />
+        <CheckInHistoryPanel seniorId={historyTarget.seniorId} seniorName={historyTarget.name} onClose={() => setHistoryTarget(null)} />
       )}
     </div>
   );

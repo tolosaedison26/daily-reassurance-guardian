@@ -40,9 +40,10 @@ export default function CheckInHistoryPanel({ seniorId, seniorName, onClose }: C
     setLoading(true);
     const [checkInsRes, voiceRes] = await Promise.all([
       supabase
-        .from("daily_check_ins")
+        .from("check_ins")
         .select("id, check_date, checked_in_at")
         .eq("senior_id", seniorId)
+        .eq("status", "SAFE")
         .order("check_date", { ascending: false })
         .limit(30),
       (supabase.from as any)("voice_messages")

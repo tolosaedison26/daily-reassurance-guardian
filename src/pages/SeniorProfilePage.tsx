@@ -13,7 +13,6 @@ import CaregiverNotes from "@/components/senior-profile/CaregiverNotes";
 import ProfileSettingsSummary from "@/components/senior-profile/ProfileSettingsSummary";
 import SetupChecklist from "@/components/senior-profile/SetupChecklist";
 import EmergencyContactsSection from "@/components/senior-profile/EmergencyContactsSection";
-import { MOCK_SENIOR } from "@/components/senior-profile/mock-data";
 
 type ProfileStatus = "checked" | "awaiting" | "missed" | "none";
 
@@ -35,66 +34,39 @@ export default function SeniorProfilePage() {
 
   const loadSenior = async () => {
     setLoading(true);
-    let seniorUserId: string | null = null;
 
-    if (user && id && !id.startsWith("demo")) {
-      const { data } = await supabase.from("managed_seniors").select("*").eq("id", id).single();
+    if (user && id) {
+      const { data } = await supabase.from("seniors").select("*").eq("id", id).single();
       if (data) {
         setSenior(data);
-        seniorUserId = data.claimed_by || null;
-        const { count } = await supabase.from("managed_senior_contacts").select("*", { count: "exact", head: true }).eq("managed_senior_id", id);
+        const { count } = await supabase.from("emergency_contacts").select("*", { count: "exact", head: true }).eq("senior_id", id);
         setContactCount(count || 0);
-        if (seniorUserId) {
-          await loadCheckInData(seniorUserId, data);
-        } else {
-          setCheckInStatus("none");
-          setLastCheckInLabel(null);
-        }
+        await loadCheckInData(id, data);
         setLoading(false);
         return;
       }
-
-      const { data: connData } = await supabase.from("senior_connections").select("senior_id").eq("caregiver_id", user.id).eq("senior_id", id).eq("status", "active").maybeSingle();
-      if (connData) {
-        const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", connData.senior_id).maybeSingle();
-        if (profileData) {
-          const names = profileData.full_name.split(" ");
-          setSenior({
-            first_name: names[0] || profileData.full_name, last_name: names.slice(1).join(" ") || "",
-            relationship: null, date_of_birth: null, phone: null, grace_period_minutes: 60,
-            mood_check_enabled: true, frequency: "daily", custom_days: [], vacation_mode: false, vacation_until: null,
-            reminder_hour: "09", reminder_minute: "00", reminder_period: "AM", timezone: "America/New_York", id: connData.senior_id,
-          });
-          seniorUserId = connData.senior_id;
-          await loadCheckInData(seniorUserId, null);
-          setLoading(false);
-          return;
-        }
-      }
     }
-    // Fallback to mock
-    setSenior(MOCK_SENIOR);
-    setContactCount(3);
-    setCheckInStatus("checked");
-    setLastCheckInLabel("Today at 8:04 AM (demo)");
-    setStats({ streak: 47, weekCheckins: 6, weekTotal: 7, monthRate: 91, monthTrend: 3, avgResponseMin: 4 });
+
+    setSenior(null);
     setLoading(false);
   };
 
-  const loadCheckInData = async (seniorUserId: string, managedData: any) => {
+  const loadCheckInData = async (seniorId: string, seniorData: any) => {
     const today = new Date().toISOString().split("T")[0];
-    const { data: todayCheckIn } = await supabase.from("daily_check_ins").select("*").eq("senior_id", seniorUserId).eq("check_date", today).maybeSingle();
+    const { data: todayCheckIn } = await supabase.from("check_ins").select("*").eq("senior_id", seniorId).eq("check_date", today).maybeSingle();
 
-    if (todayCheckIn) {
+    if (todayCheckIn?.status === "SAFE") {
       setCheckInStatus("checked");
-      const time = new Date(todayCheckIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setLastCheckInLabel(`Today at ${time}`);
+      if (todayCheckIn.checked_in_at) {
+        const time = new Date(todayCheckIn.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        setLastCheckInLabel(`Today at ${time}`);
+      }
     } else {
-      const reminderHour = managedData ? parseInt(managedData.reminder_hour) : 9;
+      const reminderHour = parseInt(seniorData?.reminder_hour || "9");
       const now = new Date();
-      const isPM = managedData?.reminder_period === "PM";
+      const isPM = seniorData?.reminder_period === "PM";
       const actualHour = isPM && reminderHour !== 12 ? reminderHour + 12 : reminderHour;
-      const graceMinutes = managedData?.grace_period_minutes || 60;
+      const graceMinutes = seniorData?.grace_period_minutes || 60;
 
       if (now.getHours() > actualHour || (now.getHours() === actualHour && now.getMinutes() > graceMinutes)) {
         setCheckInStatus("missed");
@@ -104,8 +76,8 @@ export default function SeniorProfilePage() {
         setCheckInStatus("none");
       }
 
-      const { data: lastCheckIn } = await supabase.from("daily_check_ins").select("checked_in_at").eq("senior_id", seniorUserId).order("checked_in_at", { ascending: false }).limit(1).maybeSingle();
-      if (lastCheckIn) {
+      const { data: lastCheckIn } = await supabase.from("check_ins").select("checked_in_at").eq("senior_id", seniorId).eq("status", "SAFE").order("checked_in_at", { ascending: false }).limit(1).maybeSingle();
+      if (lastCheckIn?.checked_in_at) {
         const d = new Date(lastCheckIn.checked_in_at);
         setLastCheckInLabel(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " at " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       } else {
@@ -113,10 +85,11 @@ export default function SeniorProfilePage() {
       }
     }
 
+    // Stats
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const { data: recentCheckIns } = await supabase.from("daily_check_ins").select("check_date, checked_in_at").eq("senior_id", seniorUserId).gte("check_date", thirtyDaysAgo.toISOString().split("T")[0]).order("check_date", { ascending: false });
+    const { data: recentCheckIns } = await supabase.from("check_ins").select("check_date, checked_in_at, status").eq("senior_id", seniorId).eq("status", "SAFE").gte("check_date", thirtyDaysAgo.toISOString().split("T")[0]).order("check_date", { ascending: false });
 
     const allCheckins = recentCheckIns || [];
     const weekCheckins = allCheckins.filter(c => new Date(c.check_date) >= sevenDaysAgo).length;
@@ -125,12 +98,13 @@ export default function SeniorProfilePage() {
     let streak = 0;
     const checkDates = new Set(allCheckins.map(c => c.check_date));
     const d = new Date();
-    if (!todayCheckIn) d.setDate(d.getDate() - 1);
+    if (!todayCheckIn || todayCheckIn.status !== "SAFE") d.setDate(d.getDate() - 1);
     while (checkDates.has(d.toISOString().split("T")[0])) { streak++; d.setDate(d.getDate() - 1); }
 
     let totalResponseMin = 0, responseCount = 0;
-    const rHour = managedData ? parseInt(managedData.reminder_hour) : 9;
+    const rHour = seniorData ? parseInt(seniorData.reminder_hour) : 9;
     allCheckins.forEach(c => {
+      if (!c.checked_in_at) return;
       const t = new Date(c.checked_in_at);
       const diffMin = (t.getHours() * 60 + t.getMinutes()) - (rHour * 60);
       if (diffMin > 0 && diffMin < 120) { totalResponseMin += diffMin; responseCount++; }
@@ -160,30 +134,16 @@ export default function SeniorProfilePage() {
   const schedule = `${senior.frequency === "daily" ? "Daily" : "Custom"} at ${senior.reminder_hour}:${senior.reminder_minute} ${senior.reminder_period} ${senior.timezone?.split("/")[1]?.replace("_", " ") || ""}`;
   const activeDays = senior.frequency === "daily" ? "Every day" : senior.custom_days?.length ? senior.custom_days.join(", ") : "Every day";
   const seniorId = id || senior.id;
-
   const hasCheckIn = checkInStatus === "checked";
 
   return (
     <div className="space-y-5">
-      {/* Setup checklist */}
-      <SetupChecklist
-        seniorId={seniorId}
-        profileCreated={true}
-        scheduleSet={true}
-        contactAdded={contactCount > 0}
-        testCheckinDone={hasCheckIn}
-      />
-
-      <SeniorProfileHeader
-        firstName={senior.first_name} lastName={senior.last_name}
-        relationship={senior.relationship} dateOfBirth={senior.date_of_birth}
-        phone={senior.phone} status={checkInStatus} lastCheckIn={lastCheckInLabel} seniorId={seniorId}
-      />
-
+      <SetupChecklist seniorId={seniorId} profileCreated={true} scheduleSet={true} contactAdded={contactCount > 0} testCheckinDone={hasCheckIn} />
+      <SeniorProfileHeader firstName={senior.first_name} lastName={senior.last_name} relationship={senior.relationship} dateOfBirth={senior.date_of_birth} phone={senior.phone} status={checkInStatus} lastCheckIn={lastCheckInLabel} seniorId={seniorId} />
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
         <div className="space-y-5">
-          <CheckinCalendar seniorUserId={senior?.claimed_by || null} />
-          <ActivityTimeline seniorUserId={senior?.claimed_by || null} />
+          <CheckinCalendar seniorUserId={seniorId} />
+          <ActivityTimeline seniorUserId={seniorId} />
         </div>
         <div className="space-y-5">
           <QuickStatsStrip streak={stats.streak} weekCheckins={stats.weekCheckins} weekTotal={stats.weekTotal} monthRate={stats.monthRate} monthTrend={stats.monthTrend} avgResponseMin={stats.avgResponseMin} />
