@@ -64,18 +64,23 @@ function InviteCodeSection({ onConnected }: { onConnected: (first: string, last:
         setLoading(false);
         return;
       }
-      const { data: codeRow } = await supabase
-        .from("invite_codes")
+
+      // Connection succeeded — try to fetch the newly connected senior's profile
+      // We use senior_connections (which the caregiver CAN read) to find the senior_id
+      const { data: connections } = await supabase
+        .from("senior_connections")
         .select("senior_id")
-        .eq("code", inviteCode.trim().toUpperCase())
+        .eq("caregiver_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (codeRow) {
+      if (connections?.senior_id) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("full_name")
-          .eq("user_id", codeRow.senior_id)
+          .eq("user_id", connections.senior_id)
           .maybeSingle();
 
         if (profile?.full_name) {
@@ -83,9 +88,11 @@ function InviteCodeSection({ onConnected }: { onConnected: (first: string, last:
           onConnected(parts[0] || "", parts.slice(1).join(" ") || "");
           setResult({ success: true, name: profile.full_name });
         } else {
+          onConnected("", "");
           setResult({ success: true, name: "your loved one" });
         }
       } else {
+        onConnected("", "");
         setResult({ success: true, name: "your loved one" });
       }
     } catch {
