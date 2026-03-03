@@ -599,14 +599,6 @@ export default function CaregiverDashboard() {
             <h2 className="font-black text-lg">Your Seniors</h2>
             <SeniorsHelpButton />
           </div>
-          <Button
-            onClick={() => navigate("/seniors/new")}
-            size="sm"
-            className="rounded-xl font-black gap-1.5"
-            data-tour="add-senior-btn"
-          >
-            <Plus className="w-4 h-4" /> Add Senior
-          </Button>
         </div>
         {loading ? (
           <SeniorListSkeleton />
