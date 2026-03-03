@@ -92,9 +92,9 @@ export default function BasicInfoStep({ data, onChange, onNext, errors }: Props)
     <div className="space-y-6">
       {/* Invite Code Section */}
       <div className="border border-border rounded-2xl p-5 bg-card">
-        <p className="text-sm font-semibold mb-1">Enter invite code</p>
+        <p className="text-sm font-semibold mb-1">Have an invite code?</p>
         <p className="text-xs text-muted-foreground mb-4">
-          Ask your loved one to open the app, tap 'Connect Family' and share their code with you.
+          Ask your loved one to share their code with you.
         </p>
         <Input
           placeholder="e.g. PARK-7291"
