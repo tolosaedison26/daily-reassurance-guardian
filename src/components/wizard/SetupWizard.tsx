@@ -96,7 +96,7 @@ function InviteCodeSection({ onConnected }: { onConnected: (first: string, last:
         setResult({ success: true, name: "your loved one" });
       }
     } catch {
-      setResult({ success: false, error: "Code not found. Check with your loved one and try again." });
+      setResult({ success: false, error: "Something went wrong. Please try again or add manually." });
     } finally {
       setLoading(false);
     }
