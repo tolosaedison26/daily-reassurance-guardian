@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { ShieldCheck, ChevronLeft, Plus, AlertTriangle, Info } from "lucide-react";
+import { ShieldCheck, ChevronLeft, Plus, AlertTriangle, Info, Check, AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -39,6 +41,92 @@ const GRACE_OPTIONS = [
   { label: "30 min", value: 30 },
   { label: "60 min", value: 60 },
 ];
+
+function InviteCodeSection({ onConnected }: { onConnected: (first: string, last: string, phone?: string) => void }) {
+  const { user } = useAuth();
+  const [inviteCode, setInviteCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ success: boolean; name?: string; error?: string } | null>(null);
+
+  const handleConnect = async () => {
+    if (!inviteCode.trim() || !user) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.rpc("connect_via_invite_code", {
+        p_code: inviteCode.trim(),
+        p_caregiver_id: user.id,
+      });
+      if (error) throw error;
+      const parsed = data as { success: boolean; error?: string };
+      if (!parsed.success) {
+        setResult({ success: false, error: parsed.error || "Code not found. Check with your loved one and try again." });
+        setLoading(false);
+        return;
+      }
+      const { data: codeRow } = await supabase
+        .from("invite_codes")
+        .select("senior_id")
+        .eq("code", inviteCode.trim().toUpperCase())
+        .limit(1)
+        .maybeSingle();
+
+      if (codeRow) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", codeRow.senior_id)
+          .maybeSingle();
+
+        if (profile?.full_name) {
+          const parts = profile.full_name.split(" ");
+          onConnected(parts[0] || "", parts.slice(1).join(" ") || "");
+          setResult({ success: true, name: profile.full_name });
+        } else {
+          setResult({ success: true, name: "your loved one" });
+        }
+      } else {
+        setResult({ success: true, name: "your loved one" });
+      }
+    } catch {
+      setResult({ success: false, error: "Code not found. Check with your loved one and try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="border border-border rounded-2xl p-5 bg-card">
+      <p className="text-sm font-semibold mb-1">Have an invite code?</p>
+      <p className="text-xs text-muted-foreground mb-4">
+        Ask your loved one to share their code with you.
+      </p>
+      <Input
+        placeholder="e.g. PARK-7291"
+        value={inviteCode}
+        onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setResult(null); }}
+        className="text-center rounded-xl text-base tracking-wider"
+      />
+      <Button
+        onClick={handleConnect}
+        disabled={loading || !inviteCode.trim()}
+        className="w-full h-12 mt-3 rounded-xl font-semibold"
+        style={{ background: "hsl(142, 71%, 45%)", color: "#fff" }}
+      >
+        {loading ? "Connecting…" : "Connect ✓"}
+      </Button>
+      {result && (
+        <p className={`text-sm mt-2 flex items-center gap-1 ${result.success ? "text-green-600" : "text-red-500"}`}>
+          {result.success ? (
+            <><Check className="w-4 h-4" /> Connected to {result.name}</>
+          ) : (
+            <><AlertCircle className="w-3 h-3" /> {result.error}</>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardProps) {
   const [step, setStep] = useState(0);
@@ -188,6 +276,22 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
               <div>
                 <h1 className="text-xl font-black">Who are you monitoring?</h1>
                 <p className="text-sm text-muted-foreground mt-1">Enter basic details about the person you want to check in on.</p>
+              </div>
+
+              {/* Invite Code Card */}
+              <InviteCodeSection
+                onConnected={(first, last, ph) => {
+                  setFirstName(first);
+                  setLastName(last);
+                  if (ph) setPhone(ph);
+                }}
+              />
+
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">or add manually</span>
+                <div className="flex-1 h-px bg-border" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
