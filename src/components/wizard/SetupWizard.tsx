@@ -137,6 +137,7 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [relationship, setRelationship] = useState("");
+  const [codeConnected, setCodeConnected] = useState(false);
   const [step2Errors, setStep2Errors] = useState<Record<string, string>>({});
 
   // Step 3 - Schedule
@@ -157,6 +158,7 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
   const [showGlobalSkipWarning, setShowGlobalSkipWarning] = useState(false);
 
   const validateStep2 = () => {
+    if (codeConnected) return true;
     const e: Record<string, string> = {};
     if (!firstName.trim()) e.firstName = "Required";
     if (!lastName.trim()) e.lastName = "Required";
@@ -284,6 +286,8 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
                   setFirstName(first);
                   setLastName(last);
                   if (ph) setPhone(ph);
+                  setCodeConnected(true);
+                  setStep2Errors({});
                 }}
               />
 
@@ -293,6 +297,10 @@ export default function SetupWizard({ onComplete, onSkip, saving }: SetupWizardP
                 <span className="text-xs text-muted-foreground">or add manually</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
+
+              <p className="text-xs text-muted-foreground italic">
+                Don't have the code yet? Fill in the details below. You can connect via invite code later from your dashboard.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">First name *</label>
