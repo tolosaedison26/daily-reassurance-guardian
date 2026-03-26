@@ -1,1 +1,8 @@
-{"timestamp":"2026-03-26T18:32:58+00:00","status":"ok"}
+{
+  "timestamp": "2026-03-26T18:36:14+00:00",
+  "n8n_workflows_file": "workflows-20260326-183554.json [encrypted]",
+  "db_export_file": "none",
+  "sqlite_local_only": "89M",
+  "supabase_pitr": "enabled (Pro plan, 7-day retention)",
+  "decrypt": "openssl enc -aes-256-cbc -d -pbkdf2 -in <file>.enc -out <file>"
+}
