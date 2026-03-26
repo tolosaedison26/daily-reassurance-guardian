@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Shield, Menu, X } from "lucide-react";
 
@@ -9,8 +9,15 @@ interface LandingNavProps {
 
 export default function LandingNav({ onGetStarted, onSignIn }: LandingNavProps) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  const links = [
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  const sectionLinks = [
     { label: "Features", href: "#features" },
     { label: "How It Works", href: "#how-it-works" },
     { label: "Pricing", href: "#pricing" },
@@ -22,49 +29,86 @@ export default function LandingNav({ onGetStarted, onSignIn }: LandingNavProps) 
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-        {/* Logo */}
-        <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-2">
+    <nav
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-background/95 backdrop-blur-sm border-b border-border/40 shadow-sm"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="flex items-center gap-2 cursor-pointer"
+        >
           <Shield className="w-6 h-6 text-primary" />
-          <span className="text-lg font-black tracking-tight text-primary">Daily Guardian</span>
+          <span className="text-lg sm:text-xl font-black tracking-tight text-foreground">Daily Guardian</span>
         </button>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-8">
-          {links.map((l) => (
-            <button key={l.href} onClick={() => scrollTo(l.href)} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+        <div className="hidden md:flex items-center gap-6">
+          {sectionLinks.map((l) => (
+            <button
+              key={l.href}
+              onClick={() => scrollTo(l.href)}
+              className="text-[15px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
               {l.label}
             </button>
           ))}
+          <a href="/contact" className="text-[15px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Contact</a>
         </div>
 
-        {/* Desktop buttons */}
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" onClick={onSignIn} className="font-bold text-sm">Sign In</Button>
-          <Button onClick={onGetStarted} className="h-11 px-6 font-black rounded-xl text-sm" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>
-            Get Started Free
+        <div className="hidden md:flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onSignIn} className="text-[15px] cursor-pointer">
+            Sign In
+          </Button>
+          <Button
+            size="sm"
+            onClick={onGetStarted}
+            className="text-[15px] px-5 cursor-pointer rounded-lg font-semibold"
+            style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
+          >
+            Get Started
           </Button>
         </div>
 
-        {/* Mobile hamburger */}
-        <button className="md:hidden w-10 h-10 rounded-full bg-muted flex items-center justify-center" onClick={() => setOpen(!open)} aria-label="Toggle menu">
+        <button
+          className="md:hidden w-11 h-11 flex items-center justify-center cursor-pointer rounded-lg hover:bg-muted transition-colors"
+          onClick={() => setOpen(!open)}
+          aria-label="Toggle menu"
+        >
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-border bg-background px-4 py-4 space-y-2 animate-slide-up">
-          {links.map((l) => (
-            <button key={l.href} onClick={() => scrollTo(l.href)} className="block w-full text-left text-base font-semibold text-foreground py-2">
+        <div className="md:hidden border-t border-border/40 bg-background px-4 sm:px-6 py-4 space-y-1">
+          {sectionLinks.map((l) => (
+            <button
+              key={l.href}
+              onClick={() => scrollTo(l.href)}
+              className="block w-full text-left text-base sm:text-lg py-3 text-foreground cursor-pointer rounded-lg px-2 hover:bg-muted/60 transition-colors"
+            >
               {l.label}
             </button>
           ))}
-          <div className="pt-2 space-y-2">
-            <Button variant="outline" onClick={() => { setOpen(false); onSignIn(); }} className="w-full h-12 font-bold rounded-xl text-base">Sign In</Button>
-            <Button onClick={() => { setOpen(false); onGetStarted(); }} className="w-full h-12 font-black rounded-xl text-base" style={{ background: "hsl(var(--status-checked))", color: "#fff" }}>
-              Get Started Free
+          <a
+            href="/contact"
+            onClick={() => setOpen(false)}
+            className="block w-full text-left text-base sm:text-lg py-3 text-foreground cursor-pointer rounded-lg px-2 hover:bg-muted/60 transition-colors"
+          >
+            Contact
+          </a>
+          <div className="pt-3 flex flex-col gap-2">
+            <Button variant="outline" onClick={() => { setOpen(false); onSignIn(); }} className="w-full h-12 text-base cursor-pointer">
+              Sign In
+            </Button>
+            <Button
+              onClick={() => { setOpen(false); onGetStarted(); }}
+              className="w-full h-12 text-base cursor-pointer font-semibold"
+              style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
+            >
+              Get Started
             </Button>
           </div>
         </div>

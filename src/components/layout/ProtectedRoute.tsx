@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: "senior" | "caregiver";
+  requiredRole?: "senior" | "admin";
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -25,15 +25,15 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
   }
 
   if (!user || !profile) {
-    // Redirect to login with ?redirect= so user returns after auth
     const redirectParam = location.pathname !== "/" ? `?redirect=${encodeURIComponent(location.pathname)}` : "";
     return <Navigate to={`/login${redirectParam}`} replace />;
   }
 
-  // Role-based redirect: send seniors to /home, caregivers to /dashboard
+  // Role-based redirect
   if (requiredRole && profile.role !== requiredRole) {
-    const redirectTo = profile.role === "senior" ? "/home" : "/dashboard";
-    return <Navigate to={redirectTo} replace />;
+    if (profile.role === "admin") return <Navigate to="/admin" replace />;
+    if (profile.role === "senior") return <Navigate to="/home" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

@@ -6,15 +6,15 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, RotateCcw, Copy, Check } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, Phone, MessageSquare, Pause } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { SettingsHelpButton } from "@/components/HelpModalsContent";
+import { triggerSmsWebhook, normalizePhone, formatPhoneDisplay } from "@/lib/supabase-helpers";
+import CheckInTimeEditor from "@/components/CheckInTimeEditor";
 
-export default function AccountSettingsPage({ onBack }: { onBack?: () => void } = {}) {
+export default function AccountSettingsPage() {
   const navigate = useNavigate();
   const { user, profile, refreshProfile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const isSenior = profile?.role === "senior";
 
   // Name
   const [fullName, setFullName] = useState(profile?.full_name || "");
@@ -24,6 +24,10 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
   const [email, setEmail] = useState(user?.email || "");
   const [emailSaving, setEmailSaving] = useState(false);
 
+  // Phone
+  const [phone, setPhone] = useState("");
+  const [phoneSaving, setPhoneSaving] = useState(false);
+
   // Password
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,28 +35,38 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Notifications
-  const [notifEnabled, setNotifEnabled] = useState(true);
+  // Notifications — initialize from browser permission state
+  const [notifEnabled, setNotifEnabled] = useState(
+    () => "Notification" in window && Notification.permission === "granted"
+  );
 
-  // Registration code (senior only)
-  const [regCode, setRegCode] = useState<string | null>(null);
-  const [codeCopied, setCodeCopied] = useState(false);
+  // SMS
+  const [smsStatus, setSmsStatus] = useState<string>("none");
+  const [seniorId, setSeniorId] = useState<string | null>(null);
+
+  // Pause
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (isSenior && user) {
-      supabase
-        .from("invite_codes")
-        .select("code")
-        .eq("senior_id", user.id)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data?.code) setRegCode(data.code);
-        });
+    if (user) {
+      loadSeniorData();
     }
-  }, [isSenior, user]);
+  }, [user]);
+
+  const loadSeniorData = async () => {
+    if (!user) return;
+    const { data: senior } = await supabase
+      .from("seniors")
+      .select("id, phone, sms_consent_status, paused")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    if (senior) {
+      setSeniorId(senior.id);
+      setPhone(senior.phone || "");
+      setSmsStatus(senior.sms_consent_status || "none");
+      setPaused(!!senior.paused);
+    }
+  };
 
   const handleSaveName = async () => {
     const trimmed = fullName.trim();
@@ -60,6 +74,10 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
     setNameSaving(true);
     const { error } = await supabase.from("profiles").update({ full_name: trimmed }).eq("user_id", user.id);
     if (!error) {
+      // Keep seniors.name in sync with profiles.full_name
+      if (seniorId) {
+        await supabase.from("seniors").update({ name: trimmed }).eq("id", seniorId);
+      }
       await supabase.auth.updateUser({ data: { full_name: trimmed } });
       await refreshProfile();
       toast({ title: "Name updated", description: "Your display name has been saved." });
@@ -67,6 +85,37 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
       toast({ title: "Error", description: "Failed to update name.", variant: "destructive" });
     }
     setNameSaving(false);
+  };
+
+  const handleSavePhone = async () => {
+    const cleaned = normalizePhone(phone);
+    if (!cleaned || cleaned.length < 10 || !seniorId || !user) {
+      toast({ title: "Invalid phone", description: "Please enter a valid phone number with country code.", variant: "destructive" });
+      return;
+    }
+    setPhoneSaving(true);
+    // Check if phone actually changed — if so, reset SMS consent
+    const { data: current } = await supabase.from("seniors").select("phone").eq("id", seniorId).maybeSingle();
+    const phoneChanged = current?.phone !== cleaned;
+    const updates: Record<string, any> = { phone: cleaned };
+    if (phoneChanged && (smsStatus === "confirmed" || smsStatus === "requested")) {
+      updates.sms_consent_status = "none";
+    }
+    const { error } = await supabase.from("seniors").update(updates).eq("id", seniorId);
+    if (error) {
+      toast({ title: "Error", description: "Failed to update phone.", variant: "destructive" });
+      setPhoneSaving(false);
+      return;
+    }
+    await supabase.from("profiles").update({ phone: cleaned }).eq("user_id", user.id);
+    setPhone(cleaned);
+    if (phoneChanged && (smsStatus === "confirmed" || smsStatus === "requested")) {
+      setSmsStatus("none");
+      toast({ title: "Phone updated", description: "Phone saved. Please re-enable SMS check-ins for your new number." });
+    } else {
+      toast({ title: "Phone updated", description: "Your phone number has been saved." });
+    }
+    setPhoneSaving(false);
   };
 
   const handleSaveEmail = async () => {
@@ -110,69 +159,117 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
     setPasswordSaving(false);
   };
 
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else if (isSenior) {
-      navigate("/home");
+  const handleToggleSms = async () => {
+    if (!seniorId) return;
+    if (smsStatus === "confirmed" || smsStatus === "requested") {
+      const { error } = await supabase.from("seniors").update({ sms_consent_status: "opted_out" }).eq("id", seniorId);
+      if (error) { toast({ title: "Error", description: "Failed to update SMS settings.", variant: "destructive" }); return; }
+      setSmsStatus("opted_out");
+      triggerSmsWebhook(seniorId, "opt_out");
+      toast({ title: "SMS disabled", description: "You will no longer receive check-in SMS." });
     } else {
-      navigate(-1);
+      const { error } = await supabase.from("seniors").update({ sms_consent_status: "requested" }).eq("id", seniorId);
+      if (error) { toast({ title: "Error", description: "Failed to update SMS settings.", variant: "destructive" }); return; }
+      setSmsStatus("requested");
+      triggerSmsWebhook(seniorId, "opt_in");
+      toast({ title: "SMS enabled", description: "You'll receive a confirmation text shortly. Reply YES to activate." });
     }
   };
 
-  const handleReplayTour = () => {
-    if (user) {
-      localStorage.removeItem(`tour_complete_${user.id}`);
-      toast({ title: "Tour reset", description: "The dashboard tour will show on your next visit." });
-      navigate("/dashboard");
+  const handleTogglePause = async () => {
+    if (!seniorId) return;
+    const newVal = !paused;
+    const { error } = await supabase.from("seniors").update({ paused: newVal }).eq("id", seniorId);
+    if (error) {
+      toast({ title: "Error", description: "Failed to update pause setting.", variant: "destructive" });
+      return;
     }
+    setPaused(newVal);
+    toast({
+      title: newVal ? "Check-ins paused" : "Check-ins resumed",
+      description: newVal ? "You won't receive check-ins or trigger alerts while paused." : "Daily check-ins are active again.",
+    });
   };
+
+  const smsLabel = smsStatus === "confirmed" ? "Active" : smsStatus === "requested" ? "Pending confirmation" : smsStatus === "opted_out" ? "Opted out" : "Not enabled";
+  const smsIsOn = smsStatus === "confirmed" || smsStatus === "requested";
 
   return (
-    <div className="space-y-5">
-      {/* Back button */}
-      <button
-        onClick={handleBack}
-        className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
-        style={{ minHeight: isSenior ? "48px" : "44px" }}
-      >
-        <ChevronLeft className="w-4 h-4" />
-        {isSenior ? "Back" : "← Home"}
-      </button>
+    <div className="space-y-5 max-w-2xl mx-auto px-4 sm:px-5 pt-4 pb-8">
+      <h1 className="text-xl font-black">Settings</h1>
 
-      {!isSenior && (
-        <div className="flex items-center gap-1">
-          <h1 className="text-xl font-black">Settings</h1>
-          <SettingsHelpButton />
+      {/* Phone Number */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-3">
+        <div className="flex items-center gap-2">
+          <Phone className="w-4 h-4 text-primary" />
+          <h2 className="font-bold text-base">Phone Number</h2>
+        </div>
+        <Input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(formatPhoneDisplay(e.target.value))}
+          className="h-12 rounded-xl text-base"
+          placeholder="+1 (555) 123-4567"
+        />
+        <p className="text-xs text-muted-foreground">
+          This is the number where you'll receive daily check-in SMS.
+        </p>
+        <Button
+          onClick={handleSavePhone}
+          disabled={phoneSaving || !phone.trim()}
+          className="w-full h-12 rounded-xl font-bold"
+        >
+          {phoneSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Phone"}
+        </Button>
+      </div>
+
+      {/* SMS Settings */}
+      <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-4">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-primary" />
+          <h2 className="font-bold text-base">SMS Check-Ins</h2>
+        </div>
+        <div className="flex items-center justify-between min-h-[44px]">
+          <div>
+            <span className="text-sm font-semibold">Daily SMS</span>
+            <p className="text-xs text-muted-foreground">Status: {smsLabel}</p>
+          </div>
+          <Switch checked={smsIsOn} onCheckedChange={handleToggleSms} />
+        </div>
+        {smsStatus === "requested" && (
+          <p className="text-xs text-muted-foreground rounded-lg p-3" style={{ background: "hsl(var(--status-pending) / 0.08)" }}>
+            We sent a confirmation text to your phone. Reply <span className="font-bold">YES</span> to activate SMS check-ins.
+          </p>
+        )}
+      </div>
+
+      {/* Pause Check-Ins */}
+      {seniorId && (
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-4">
+          <div className="flex items-center gap-2">
+            <Pause className="w-4 h-4 text-primary" />
+            <h2 className="font-bold text-base">Pause Check-Ins</h2>
+          </div>
+          <div className="flex items-center justify-between min-h-[44px]">
+            <div>
+              <span className="text-sm font-semibold">{paused ? "Paused" : "Active"}</span>
+              <p className="text-xs text-muted-foreground">
+                {paused ? "No SMS sent and no alerts while paused" : "Daily check-ins are running normally"}
+              </p>
+            </div>
+            <Switch checked={paused} onCheckedChange={handleTogglePause} />
+          </div>
+          {paused && (
+            <p className="text-xs text-amber-600 font-semibold rounded-lg p-3" style={{ background: "hsl(var(--status-pending) / 0.08)" }}>
+              Your check-ins are paused. Toggle off to resume.
+            </p>
+          )}
         </div>
       )}
 
-      {/* Registration Code (senior only) */}
-      {isSenior && regCode && (
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-card space-y-2">
-          <h2 className="font-bold text-base">Your Registration Code</h2>
-          <p className="text-sm text-muted-foreground">Share this with your caregiver to link your accounts.</p>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex-1 rounded-lg py-3 px-4 text-center font-bold tracking-[0.15em]"
-              style={{ background: "hsl(var(--primary) / 0.06)", border: "1px solid hsl(var(--primary) / 0.2)", color: "hsl(var(--primary))" }}
-            >
-              {regCode}
-            </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(regCode).then(() => {
-                  setCodeCopied(true);
-                  setTimeout(() => setCodeCopied(false), 2000);
-                });
-              }}
-              className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-muted transition-colors shrink-0"
-              aria-label="Copy code"
-            >
-              {codeCopied ? <Check className="w-4 h-4" style={{ color: "hsl(var(--status-checked))" }} /> : <Copy className="w-4 h-4 text-muted-foreground" />}
-            </button>
-          </div>
-        </div>
+      {/* Check-In Time */}
+      {seniorId && (
+        <CheckInTimeEditor seniorId={seniorId} />
       )}
 
       {/* Display Name */}
@@ -307,19 +404,6 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
         </div>
       </div>
 
-      {/* Caregiver-only: Replay tour */}
-      {!isSenior && (
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
-          <button
-            onClick={handleReplayTour}
-            className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Replay dashboard tour
-          </button>
-        </div>
-      )}
-
       {/* Sign Out */}
       <div className="bg-card rounded-2xl p-5 border border-border shadow-card">
         <Button
@@ -332,10 +416,10 @@ export default function AccountSettingsPage({ onBack }: { onBack?: () => void } 
         </Button>
       </div>
 
-      {/* Role info */}
+      {/* Account info */}
       <div className="bg-muted/50 rounded-2xl p-4 text-center">
         <p className="text-sm text-muted-foreground">
-          Signed in as <span className="font-bold capitalize">{profile?.role || "user"}</span> · {user?.email}
+          {user?.email}
         </p>
       </div>
     </div>

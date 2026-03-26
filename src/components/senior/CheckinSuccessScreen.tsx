@@ -19,7 +19,7 @@ export default function CheckinSuccessScreen({ firstName, mood, onDismiss, autoD
     return () => clearTimeout(timer);
   }, [autoDismissMs, onDismiss]);
 
-  const moodEmoji = mood === "great" ? "😊" : mood === "okay" ? "😐" : mood === "bad" ? "😔" : "💚";
+  const moodEmoji = mood === "great" ? "😊" : mood === "okay" ? "😐" : mood === "not-great" ? "😔" : "💚";
 
   return (
     <div
@@ -42,7 +42,7 @@ export default function CheckinSuccessScreen({ firstName, mood, onDismiss, autoD
         </h1>
 
         <p className="text-lg text-muted-foreground" style={{ fontSize: "18px", lineHeight: "28px" }}>
-          Your family has been notified you're doing well today. {moodEmoji}
+          You're all checked in for today. {moodEmoji}
         </p>
 
         <button

@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Daily Guardian — Free Daily Check-ins for Your Loved Ones</title>
     <meta name="description" content="Keep your loved ones safe with free daily SMS check-ins, mood tracking, and instant family alerts. Start free — no credit card needed.">
-    <meta name="author" content="Lovable" />
+    <meta name="author" content="Daily Guardian" />
+
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 
     <meta name="theme-color" content="#1a1a2e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,7 +20,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5eb3113f-3c09-40ba-9818-2a63518adabc/id-preview-4c95975f--263e6634-f7d7-4b4b-874c-ce7d1c32ad3c.lovable.app-1771380193591.png">
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
+    <meta name="twitter:site" content="@DailyGuardian" />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5eb3113f-3c09-40ba-9818-2a63518adabc/id-preview-4c95975f--263e6634-f7d7-4b4b-874c-ce7d1c32ad3c.lovable.app-1771380193591.png">
     <meta property="og:title" content="Daily Guardian">
     <meta name="twitter:title" content="Daily Guardian">
@@ -26,6 +30,37 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // SW killer + cache buster — runs on EVERY page load
+      // Always unregister any service worker and clear caches, then reload once
+      (function() {
+        var VER = 'v5-nopwa';
+        var done = localStorage.getItem('dg_cache_ver') === VER;
+        if (!done) {
+          var tasks = [];
+          if ('serviceWorker' in navigator) {
+            tasks.push(
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                return Promise.all(regs.map(function(r) { return r.unregister(); }));
+              })
+            );
+          }
+          if ('caches' in window) {
+            tasks.push(
+              caches.keys().then(function(names) {
+                return Promise.all(names.map(function(n) { return caches.delete(n); }));
+              })
+            );
+          }
+          Promise.all(tasks).then(function() {
+            localStorage.setItem('dg_cache_ver', VER);
+            location.reload();
+          });
+          // Stop page from rendering until reload
+          document.getElementById('root').style.display = 'none';
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

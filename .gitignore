@@ -12,6 +12,19 @@ dist
 dist-ssr
 *.local
 
+# Secrets & config
+.env
+.env.*
+.mcp.json
+*.pem
+*.key
+
+# Sensitive project files — DO NOT COMMIT
+docs/
+backups/
+CLAUDE.md
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

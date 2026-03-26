@@ -10,42 +10,65 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
       alerts: {
         Row: {
-          created_at: string
+          acknowledged_at: string | null
+          alerted_at: string | null
+          caregiver_id: string | null
+          check_in_id: string
+          contact_name: string | null
+          contact_phone: string | null
+          contact_type: string
+          grace_period_minutes: number | null
           id: string
-          message: string | null
-          resolved: boolean
-          resolved_at: string | null
-          resolved_by: string | null
+          priority: number | null
           senior_id: string
-          type: string
         }
         Insert: {
-          created_at?: string
+          acknowledged_at?: string | null
+          alerted_at?: string | null
+          caregiver_id?: string | null
+          check_in_id: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_type: string
+          grace_period_minutes?: number | null
           id?: string
-          message?: string | null
-          resolved?: boolean
-          resolved_at?: string | null
-          resolved_by?: string | null
+          priority?: number | null
           senior_id: string
-          type?: string
         }
         Update: {
-          created_at?: string
+          acknowledged_at?: string | null
+          alerted_at?: string | null
+          caregiver_id?: string | null
+          check_in_id?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_type?: string
+          grace_period_minutes?: number | null
           id?: string
-          message?: string | null
-          resolved?: boolean
-          resolved_at?: string | null
-          resolved_by?: string | null
+          priority?: number | null
           senior_id?: string
-          type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "alerts_caregiver_id_fkey"
+            columns: ["caregiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_check_in_id_fkey"
+            columns: ["check_in_id"]
+            isOneToOne: false
+            referencedRelation: "check_ins"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "alerts_senior_id_fkey"
             columns: ["senior_id"]
@@ -61,7 +84,6 @@ export type Database = {
           created_at: string
           id: string
           managed_senior_id: string
-          senior_id: string | null
           text: string
           updated_at: string
         }
@@ -70,7 +92,6 @@ export type Database = {
           created_at?: string
           id?: string
           managed_senior_id: string
-          senior_id?: string | null
           text: string
           updated_at?: string
         }
@@ -79,7 +100,6 @@ export type Database = {
           created_at?: string
           id?: string
           managed_senior_id?: string
-          senior_id?: string | null
           text?: string
           updated_at?: string
         }
@@ -88,13 +108,6 @@ export type Database = {
             foreignKeyName: "caregiver_notes_managed_senior_id_fkey"
             columns: ["managed_senior_id"]
             isOneToOne: false
-            referencedRelation: "managed_seniors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "caregiver_notes_senior_id_fkey"
-            columns: ["senior_id"]
-            isOneToOne: false
             referencedRelation: "seniors"
             referencedColumns: ["id"]
           },
@@ -102,33 +115,42 @@ export type Database = {
       }
       check_ins: {
         Row: {
-          check_date: string
-          checked_in_at: string | null
-          created_at: string
+          created_at: string | null
+          date: string
           id: string
+          is_test: boolean | null
+          mid_grace_reminded_at: string | null
           mood: string | null
-          note: string | null
+          reply_text: string | null
+          responded_at: string | null
           senior_id: string
+          sent_at: string | null
           status: string
         }
         Insert: {
-          check_date?: string
-          checked_in_at?: string | null
-          created_at?: string
+          created_at?: string | null
+          date?: string
           id?: string
+          is_test?: boolean | null
+          mid_grace_reminded_at?: string | null
           mood?: string | null
-          note?: string | null
+          reply_text?: string | null
+          responded_at?: string | null
           senior_id: string
+          sent_at?: string | null
           status?: string
         }
         Update: {
-          check_date?: string
-          checked_in_at?: string | null
-          created_at?: string
+          created_at?: string | null
+          date?: string
           id?: string
+          is_test?: boolean | null
+          mid_grace_reminded_at?: string | null
           mood?: string | null
-          note?: string | null
+          reply_text?: string | null
+          responded_at?: string | null
           senior_id?: string
+          sent_at?: string | null
           status?: string
         }
         Relationships: [
@@ -141,69 +163,87 @@ export type Database = {
           },
         ]
       }
-      daily_check_ins: {
+      documents: {
         Row: {
-          check_date: string
-          checked_in_at: string
+          content: string
+          created_at: string | null
+          embedding: string | null
           id: string
-          senior_id: string
+          metadata: Json | null
         }
         Insert: {
-          check_date?: string
-          checked_in_at?: string
+          content: string
+          created_at?: string | null
+          embedding?: string | null
           id?: string
-          senior_id: string
+          metadata?: Json | null
         }
         Update: {
-          check_date?: string
-          checked_in_at?: string
+          content?: string
+          created_at?: string | null
+          embedding?: string | null
           id?: string
-          senior_id?: string
+          metadata?: Json | null
         }
         Relationships: []
       }
       emergency_contacts: {
         Row: {
-          created_at: string
+          created_at: string | null
           delay_minutes: number
           email: string | null
+          grace_period_minutes: number
           id: string
           name: string
+          notified_at: string | null
           notify_via_email: boolean
           notify_via_sms: boolean
+          opted_out: boolean | null
+          opted_out_at: string | null
           phone: string
+          priority: number
           relationship: string | null
-          senior_id: string | null
+          senior_id: string
           sort_order: number
-          user_id: string
+          user_id: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           delay_minutes?: number
           email?: string | null
+          grace_period_minutes?: number
           id?: string
           name: string
+          notified_at?: string | null
           notify_via_email?: boolean
           notify_via_sms?: boolean
+          opted_out?: boolean | null
+          opted_out_at?: string | null
           phone: string
+          priority: number
           relationship?: string | null
-          senior_id?: string | null
+          senior_id: string
           sort_order?: number
-          user_id: string
+          user_id?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           delay_minutes?: number
           email?: string | null
+          grace_period_minutes?: number
           id?: string
           name?: string
+          notified_at?: string | null
           notify_via_email?: boolean
           notify_via_sms?: boolean
+          opted_out?: boolean | null
+          opted_out_at?: string | null
           phone?: string
+          priority?: number
           relationship?: string | null
-          senior_id?: string | null
+          senior_id?: string
           sort_order?: number
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -213,28 +253,42 @@ export type Database = {
             referencedRelation: "seniors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "emergency_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       families: {
         Row: {
           caregiver_id: string
-          created_at: string
+          created_at: string | null
           id: string
           senior_id: string
         }
         Insert: {
           caregiver_id: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           senior_id: string
         }
         Update: {
           caregiver_id?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           senior_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "families_caregiver_id_fkey"
+            columns: ["caregiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "families_senior_id_fkey"
             columns: ["senior_id"]
@@ -244,425 +298,356 @@ export type Database = {
           },
         ]
       }
-      favorite_sounds: {
-        Row: {
-          created_at: string
-          id: string
-          sound_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          sound_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          sound_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       invite_codes: {
         Row: {
           code: string
           created_at: string
-          expires_at: string
+          expires_at: string | null
           id: string
           is_active: boolean
           senior_id: string
+          used_at: string | null
+          used_by: string | null
         }
         Insert: {
           code: string
           created_at?: string
-          expires_at?: string
+          expires_at?: string | null
           id?: string
           is_active?: boolean
           senior_id: string
+          used_at?: string | null
+          used_by?: string | null
         }
         Update: {
           code?: string
           created_at?: string
-          expires_at?: string
+          expires_at?: string | null
           id?: string
           is_active?: boolean
           senior_id?: string
-        }
-        Relationships: []
-      }
-      managed_senior_contacts: {
-        Row: {
-          created_at: string
-          delay_minutes: number
-          email: string | null
-          id: string
-          managed_senior_id: string
-          name: string
-          notify_via_email: boolean
-          notify_via_sms: boolean
-          phone: string | null
-          relationship: string | null
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          delay_minutes?: number
-          email?: string | null
-          id?: string
-          managed_senior_id: string
-          name: string
-          notify_via_email?: boolean
-          notify_via_sms?: boolean
-          phone?: string | null
-          relationship?: string | null
-          sort_order?: number
-        }
-        Update: {
-          created_at?: string
-          delay_minutes?: number
-          email?: string | null
-          id?: string
-          managed_senior_id?: string
-          name?: string
-          notify_via_email?: boolean
-          notify_via_sms?: boolean
-          phone?: string | null
-          relationship?: string | null
-          sort_order?: number
+          used_at?: string | null
+          used_by?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "managed_senior_contacts_managed_senior_id_fkey"
-            columns: ["managed_senior_id"]
+            foreignKeyName: "invite_codes_senior_id_fkey"
+            columns: ["senior_id"]
             isOneToOne: false
-            referencedRelation: "managed_seniors"
+            referencedRelation: "seniors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invite_codes_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      managed_seniors: {
+      marketing_data: {
         Row: {
-          caregiver_id: string
-          claimed_by: string | null
-          created_at: string
-          custom_days: string[] | null
-          date_of_birth: string | null
-          escalation_911_enabled: boolean
-          escalation_delay_minutes: number
-          escalation_loop_enabled: boolean
-          first_name: string
-          frequency: string
-          grace_period_minutes: number
-          id: string
-          last_name: string
-          mood_check_enabled: boolean
-          notes: string | null
-          phone: string | null
-          quiet_hours_enabled: boolean
-          quiet_hours_from: string
-          quiet_hours_until: string
-          relationship: string | null
-          reminder_hour: string
-          reminder_minute: string
-          reminder_period: string
-          timezone: string
-          updated_at: string
-          vacation_from: string | null
-          vacation_mode: boolean
-          vacation_until: string | null
+          content: string | null
+          embedding: string | null
+          id: number
         }
         Insert: {
-          caregiver_id: string
-          claimed_by?: string | null
-          created_at?: string
-          custom_days?: string[] | null
-          date_of_birth?: string | null
-          escalation_911_enabled?: boolean
-          escalation_delay_minutes?: number
-          escalation_loop_enabled?: boolean
-          first_name: string
-          frequency?: string
-          grace_period_minutes?: number
-          id?: string
-          last_name: string
-          mood_check_enabled?: boolean
-          notes?: string | null
-          phone?: string | null
-          quiet_hours_enabled?: boolean
-          quiet_hours_from?: string
-          quiet_hours_until?: string
-          relationship?: string | null
-          reminder_hour?: string
-          reminder_minute?: string
-          reminder_period?: string
-          timezone?: string
-          updated_at?: string
-          vacation_from?: string | null
-          vacation_mode?: boolean
-          vacation_until?: string | null
+          content?: string | null
+          embedding?: string | null
+          id?: number
         }
         Update: {
-          caregiver_id?: string
-          claimed_by?: string | null
-          created_at?: string
-          custom_days?: string[] | null
-          date_of_birth?: string | null
-          escalation_911_enabled?: boolean
-          escalation_delay_minutes?: number
-          escalation_loop_enabled?: boolean
-          first_name?: string
-          frequency?: string
-          grace_period_minutes?: number
-          id?: string
-          last_name?: string
-          mood_check_enabled?: boolean
-          notes?: string | null
-          phone?: string | null
-          quiet_hours_enabled?: boolean
-          quiet_hours_from?: string
-          quiet_hours_until?: string
-          relationship?: string | null
-          reminder_hour?: string
-          reminder_minute?: string
-          reminder_period?: string
-          timezone?: string
-          updated_at?: string
-          vacation_from?: string | null
-          vacation_mode?: boolean
-          vacation_until?: string | null
+          content?: string | null
+          embedding?: string | null
+          id?: number
         }
         Relationships: []
       }
       profiles: {
         Row: {
-          created_at: string
-          full_name: string
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
-          updated_at: string
+          phone: string | null
+          role: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
-          full_name?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
-          full_name?: string
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          caregiver_id: string
-          created_at: string
-          endpoint: string
-          id: string
-          p256dh: string
-          updated_at: string
-        }
-        Insert: {
-          auth: string
-          caregiver_id: string
-          created_at?: string
-          endpoint: string
-          id?: string
-          p256dh: string
-          updated_at?: string
-        }
-        Update: {
-          auth?: string
-          caregiver_id?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      reminder_settings: {
-        Row: {
-          created_at: string
-          grace_period_hours: number
-          id: string
-          notifications_enabled: boolean
-          reminder_time: string
-          senior_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          grace_period_hours?: number
-          id?: string
-          notifications_enabled?: boolean
-          reminder_time?: string
-          senior_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          grace_period_hours?: number
-          id?: string
-          notifications_enabled?: boolean
-          reminder_time?: string
-          senior_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      senior_connections: {
-        Row: {
-          caregiver_id: string
-          created_at: string
-          id: string
-          senior_id: string
-          status: string
-        }
-        Insert: {
-          caregiver_id: string
-          created_at?: string
-          id?: string
-          senior_id: string
-          status?: string
-        }
-        Update: {
-          caregiver_id?: string
-          created_at?: string
-          id?: string
-          senior_id?: string
-          status?: string
         }
         Relationships: []
       }
       seniors: {
         Row: {
-          created_at: string
-          created_by: string
-          custom_days: string[] | null
-          date_of_birth: string | null
-          first_name: string
-          frequency: string
+          avatar_url: string | null
+          check_in_time: string
+          created_at: string | null
           grace_period_minutes: number
           id: string
-          last_name: string
-          mood_check_enabled: boolean
-          notes: string | null
-          phone: string | null
+          inactivity_warned_at: string | null
+          name: string
+          name_changed_at: string | null
+          paused: boolean | null
+          phone: string
+          previous_name: string | null
+          profile_id: string | null
           registration_code: string | null
           relationship: string | null
-          reminder_hour: string
-          reminder_minute: string
-          reminder_period: string
+          sms_consent_confirmed_at: string | null
+          sms_consent_requested_at: string | null
+          sms_consent_status: string
+          status: string | null
           timezone: string
-          updated_at: string
-          user_id: string | null
-          vacation_from: string | null
-          vacation_mode: boolean
-          vacation_until: string | null
         }
         Insert: {
-          created_at?: string
-          created_by: string
-          custom_days?: string[] | null
-          date_of_birth?: string | null
-          first_name: string
-          frequency?: string
+          avatar_url?: string | null
+          check_in_time?: string
+          created_at?: string | null
           grace_period_minutes?: number
           id?: string
-          last_name: string
-          mood_check_enabled?: boolean
-          notes?: string | null
-          phone?: string | null
+          inactivity_warned_at?: string | null
+          name: string
+          name_changed_at?: string | null
+          paused?: boolean | null
+          phone: string
+          previous_name?: string | null
+          profile_id?: string | null
           registration_code?: string | null
           relationship?: string | null
-          reminder_hour?: string
-          reminder_minute?: string
-          reminder_period?: string
+          sms_consent_confirmed_at?: string | null
+          sms_consent_requested_at?: string | null
+          sms_consent_status?: string
+          status?: string | null
           timezone?: string
-          updated_at?: string
-          user_id?: string | null
-          vacation_from?: string | null
-          vacation_mode?: boolean
-          vacation_until?: string | null
         }
         Update: {
-          created_at?: string
-          created_by?: string
-          custom_days?: string[] | null
-          date_of_birth?: string | null
-          first_name?: string
-          frequency?: string
+          avatar_url?: string | null
+          check_in_time?: string
+          created_at?: string | null
           grace_period_minutes?: number
           id?: string
-          last_name?: string
-          mood_check_enabled?: boolean
-          notes?: string | null
-          phone?: string | null
+          inactivity_warned_at?: string | null
+          name?: string
+          name_changed_at?: string | null
+          paused?: boolean | null
+          phone?: string
+          previous_name?: string | null
+          profile_id?: string | null
           registration_code?: string | null
           relationship?: string | null
-          reminder_hour?: string
-          reminder_minute?: string
-          reminder_period?: string
+          sms_consent_confirmed_at?: string | null
+          sms_consent_requested_at?: string | null
+          sms_consent_status?: string
+          status?: string | null
           timezone?: string
-          updated_at?: string
-          user_id?: string | null
-          vacation_from?: string | null
-          vacation_mode?: boolean
-          vacation_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seniors_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      udemy_chunks: {
+        Row: {
+          chunk_index: number | null
+          chunk_text: string
+          created_at: string | null
+          embedding: string | null
+          id: string
+          job_id: string | null
+          lecture_id: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          chunk_index?: number | null
+          chunk_text: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          job_id?: string | null
+          lecture_id?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          chunk_index?: number | null
+          chunk_text?: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          job_id?: string | null
+          lecture_id?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "udemy_chunks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "udemy_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      udemy_jobs: {
+        Row: {
+          course_slug: string | null
+          created_at: string | null
+          error_msg: string | null
+          id: string
+          lecture_id: string | null
+          processed_at: string | null
+          source_url: string
+          status: string | null
+          title: string | null
+          udemy_course_id: number | null
+          url_type: string
+        }
+        Insert: {
+          course_slug?: string | null
+          created_at?: string | null
+          error_msg?: string | null
+          id?: string
+          lecture_id?: string | null
+          processed_at?: string | null
+          source_url: string
+          status?: string | null
+          title?: string | null
+          udemy_course_id?: number | null
+          url_type: string
+        }
+        Update: {
+          course_slug?: string | null
+          created_at?: string | null
+          error_msg?: string | null
+          id?: string
+          lecture_id?: string | null
+          processed_at?: string | null
+          source_url?: string
+          status?: string | null
+          title?: string | null
+          udemy_course_id?: number | null
+          url_type?: string
         }
         Relationships: []
       }
-      user_roles: {
+      udemy_knowledge: {
         Row: {
+          content: string
+          created_at: string | null
+          geo_rewritten: string | null
+          geo_score: number | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          job_id: string | null
+          type: string
         }
         Insert: {
+          content: string
+          created_at?: string | null
+          geo_rewritten?: string | null
+          geo_score?: number | null
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          job_id?: string | null
+          type: string
         }
         Update: {
+          content?: string
+          created_at?: string | null
+          geo_rewritten?: string | null
+          geo_score?: number | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
+          job_id?: string | null
+          type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "udemy_knowledge_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "udemy_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      voice_messages: {
+      udemy_playbooks: {
         Row: {
-          audio_path: string
-          created_at: string
-          duration_seconds: number | null
+          generated_at: string | null
+          google_doc_url: string | null
           id: string
-          senior_id: string
+          job_id: string | null
+          llms_txt: string | null
+          playbook_json: Json | null
         }
         Insert: {
-          audio_path: string
-          created_at?: string
-          duration_seconds?: number | null
+          generated_at?: string | null
+          google_doc_url?: string | null
           id?: string
-          senior_id: string
+          job_id?: string | null
+          llms_txt?: string | null
+          playbook_json?: Json | null
         }
         Update: {
-          audio_path?: string
-          created_at?: string
-          duration_seconds?: number | null
+          generated_at?: string | null
+          google_doc_url?: string | null
           id?: string
-          senior_id?: string
+          job_id?: string | null
+          llms_txt?: string | null
+          playbook_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "udemy_playbooks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "udemy_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      va_trainer_ai_agent: {
+        Row: {
+          content: string
+          created_at: string | null
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
         }
         Relationships: []
       }
@@ -675,28 +660,69 @@ export type Database = {
         Args: { p_caregiver_id: string; p_code: string }
         Returns: Json
       }
+      ensure_senior_record: { Args: never; Returns: undefined }
       generate_invite_code: { Args: { p_senior_id: string }; Returns: string }
-      get_missed_checkin_seniors: {
-        Args: never
+      match_documents: {
+        Args: { filter?: Json; match_count: number; query_embedding: string }
         Returns: {
-          full_name: string
-          senior_id: string
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
         }[]
       }
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      has_role: {
+      match_udemy_chunks: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
+          filter_job_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
         }
-        Returns: boolean
+        Returns: {
+          chunk_text: string
+          id: string
+          job_id: string
+          similarity: number
+        }[]
       }
+      match_va_trainer_ai_agent:
+        | {
+            Args: { match_count?: number; query_embedding: string }
+            Returns: {
+              content: string
+              id: string
+              similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              filter?: Json
+              match_count?: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: string
+              metadata: Json
+              similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: number
+              metadata: Json
+              similarity: number
+            }[]
+          }
     }
     Enums: {
-      app_role: "senior" | "caregiver"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -823,8 +849,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["senior", "caregiver"],
-    },
+    Enums: {},
   },
 } as const

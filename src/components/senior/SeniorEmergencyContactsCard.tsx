@@ -56,7 +56,7 @@ export default function SeniorEmergencyContactsCard({ seniorId, onViewSettings }
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: "hsl(var(--status-pending))" }} />
             <div>
               <p className="font-semibold" style={{ fontSize: "16px", color: "hsl(var(--status-pending))" }}>No emergency contacts set up yet.</p>
-              <p className="text-muted-foreground mt-1" style={{ fontSize: "16px", lineHeight: "24px" }}>Ask your caregiver to add someone who can be notified if you miss a check-in.</p>
+              <p className="text-muted-foreground mt-1" style={{ fontSize: "16px", lineHeight: "24px" }}>Go to the <a href="/contacts" className="font-bold underline" style={{ color: "hsl(var(--primary))" }}>Contacts page</a> to add people who will be notified if you miss a check-in.</p>
             </div>
           </div>
         </div>

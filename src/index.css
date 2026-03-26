@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @layer base {
   :root {
@@ -25,7 +25,7 @@
     --secondary-foreground: 28 80% 35%;
 
     --muted: 220 14% 94%;
-    --muted-foreground: 220 10% 50%;
+    --muted-foreground: 220 10% 40%;
 
     /* Warm sand accent */
     --accent: 40 80% 92%;
@@ -45,6 +45,10 @@
     --status-pending: 28 95% 54%;
     --status-none: 220 12% 68%;
     --status-alert: 0 72% 51%;
+
+    /* Alternating section background */
+    --section-alt: 30 60% 97%;
+    --gradient-cta: linear-gradient(180deg, hsl(30 80% 97%) 0%, hsl(30 60% 94%) 100%);
 
     /* Snug-style gradients — clean, minimal */
     --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%), hsl(30 60% 97%));
@@ -92,6 +96,9 @@
     --status-none: 220 12% 55%;
     --status-alert: 0 60% 50%;
 
+    --section-alt: 220 14% 13%;
+    --gradient-cta: linear-gradient(180deg, hsl(220 14% 13%) 0%, hsl(220 14% 16%) 100%);
+
     --gradient-hero: linear-gradient(180deg, hsl(220 18% 10%), hsl(220 16% 13%));
     --gradient-card: linear-gradient(160deg, hsl(220 16% 14%), hsl(220 14% 16%));
     --gradient-btn: linear-gradient(135deg, hsl(142 55% 40%), hsl(155 50% 34%));
@@ -129,6 +136,12 @@
 }
 
 @layer utilities {
+  .bg-section-alt {
+    background: hsl(var(--section-alt));
+  }
+  .gradient-cta {
+    background: var(--gradient-cta);
+  }
   .gradient-hero {
     background: var(--gradient-hero);
   }
@@ -233,3 +246,25 @@
 }
 .sound-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
 .sound-card:active { transform: scale(0.97); }
+
+/* Scroll-reveal fade-up */
+.fade-up {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Respect user's motion preferences — WCAG AAA */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

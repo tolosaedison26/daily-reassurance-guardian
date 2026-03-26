@@ -1,12 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate, useLocation } from "react-router-dom";
-import AuthPage from "@/pages/AuthPage";
-
+import { Navigate, useNavigate } from "react-router-dom";
 import LandingPage from "@/pages/LandingPage";
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
-  const location = useLocation();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -24,15 +22,15 @@ export default function Index() {
 
   // If logged in, route to the right dashboard
   if (user && profile) {
-    if (profile.role === "caregiver") {
-      return <Navigate to="/dashboard" replace />;
+    if (profile.role === "admin") {
+      return <Navigate to="/admin" replace />;
     }
     return <Navigate to="/home" replace />;
   }
 
   // Not logged in: show landing page
-  return <LandingPage 
-    onGetStarted={() => window.location.href = "/register"} 
-    onSignIn={() => window.location.href = "/login"} 
+  return <LandingPage
+    onGetStarted={() => navigate("/register")}
+    onSignIn={() => navigate("/login")}
   />;
 }
