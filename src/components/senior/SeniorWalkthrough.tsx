@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { triggerSmsWebhook, triggerEmergencyContactWebhook, normalizePhone, formatPhoneDisplay } from "@/lib/supabase-helpers";
@@ -27,7 +26,6 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
   const [screen, setScreen] = useState(0);
   const [practiced, setPracticed] = useState(false);
   const [smsStatus, setSmsStatus] = useState<string>("none");
-  const navigate = useNavigate();
 
   // Emergency contact form state
   const [draftContacts, setDraftContacts] = useState<DraftContact[]>([{ name: "", phone: "" }]);

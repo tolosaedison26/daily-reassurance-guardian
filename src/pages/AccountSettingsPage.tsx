@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, ChevronLeft, LogOut, Phone, MessageSquare, Pause } from "lucide-react";
+import { User, Mail, Lock, Moon, Bell, Eye, EyeOff, Loader2, LogOut, Phone, MessageSquare, Pause } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { triggerSmsWebhook, normalizePhone, formatPhoneDisplay } from "@/lib/supabase-helpers";
 import CheckInTimeEditor from "@/components/CheckInTimeEditor";
