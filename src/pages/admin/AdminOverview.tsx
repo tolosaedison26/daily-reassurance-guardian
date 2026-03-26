@@ -109,6 +109,23 @@ export default function AdminOverview() {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
       const startDate = sevenDaysAgo.toISOString().split("T")[0];
 
+      // Get admin profile_ids to exclude from stats
+      const { data: adminProfiles } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("role", "admin");
+      const adminProfileIds = (adminProfiles || []).map((p) => p.user_id);
+
+      // Get admin senior IDs to exclude
+      let adminSeniorIds: string[] = [];
+      if (adminProfileIds.length > 0) {
+        const { data: adminSeniors } = await supabase
+          .from("seniors")
+          .select("id")
+          .in("profile_id", adminProfileIds);
+        adminSeniorIds = (adminSeniors || []).map((s) => s.id);
+      }
+
       const [
         { data: seniors },
         { data: ecs },
@@ -116,31 +133,31 @@ export default function AdminOverview() {
         { data: alerts },
         { data: weekCheckins },
         { data: moodData },
-        { count: alerts7dCount },
+        { data: alerts7dData },
       ] = await Promise.all([
         supabase.from("seniors").select("id, paused, sms_consent_status, inactivity_warned_at"),
-        supabase.from("emergency_contacts").select("id, opted_out"),
-        supabase.from("check_ins").select("status").eq("date", today),
+        supabase.from("emergency_contacts").select("id, opted_out, senior_id"),
+        supabase.from("check_ins").select("senior_id, status").eq("date", today),
         supabase
           .from("alerts")
           .select("id, senior_id, contact_name, alerted_at")
           .order("alerted_at", { ascending: false })
           .limit(8),
-        supabase.from("check_ins").select("date, status").gte("date", startDate),
+        supabase.from("check_ins").select("senior_id, date, status").gte("date", startDate),
         supabase
           .from("check_ins")
-          .select("mood")
+          .select("senior_id, mood")
           .gte("date", startDate)
           .not("mood", "is", null),
         supabase
           .from("alerts")
-          .select("id", { count: "exact", head: true })
+          .select("senior_id")
           .gte("alerted_at", startDate + "T00:00:00Z"),
       ]);
 
-      const seniorList = seniors || [];
-      const ecList = ecs || [];
-      const checkinList = todayCheckins || [];
+      const seniorList = (seniors || []).filter((s) => !adminSeniorIds.includes(s.id));
+      const ecList = (ecs || []).filter((e) => !adminSeniorIds.includes(e.senior_id));
+      const checkinList = (todayCheckins || []).filter((c) => !adminSeniorIds.includes(c.senior_id));
 
       // Today counts
       const todaySafe = checkinList.filter((c) => c.status === "SAFE").length;
@@ -164,7 +181,7 @@ export default function AdminOverview() {
       }
       const trendMap: Record<string, { SAFE: number; MISSED: number }> = {};
       days.forEach((d) => { trendMap[d] = { SAFE: 0, MISSED: 0 }; });
-      (weekCheckins || []).forEach((ci) => {
+      (weekCheckins || []).filter((ci) => !adminSeniorIds.includes(ci.senior_id)).forEach((ci) => {
         if (trendMap[ci.date] && (ci.status === "SAFE" || ci.status === "MISSED")) {
           trendMap[ci.date][ci.status as "SAFE" | "MISSED"]++;
         }
@@ -182,7 +199,7 @@ export default function AdminOverview() {
         "not-great": { label: "Not Great 😔", fill: "#dc2626" },
       };
       const moodMap: Record<string, number> = {};
-      (moodData || []).forEach((ci) => {
+      (moodData || []).filter((ci) => !adminSeniorIds.includes(ci.senior_id)).forEach((ci) => {
         if (ci.mood) moodMap[ci.mood] = (moodMap[ci.mood] || 0) + 1;
       });
       const moodCounts = Object.entries(moodMap).map(([mood, count]) => ({
@@ -217,12 +234,12 @@ export default function AdminOverview() {
         todayMissed,
         todayPending,
         checkinRate,
-        totalAlerts7d: alerts7dCount || 0,
+        totalAlerts7d: (alerts7dData || []).filter((a) => !adminSeniorIds.includes(a.senior_id)).length,
         inactivityWarned: seniorList.filter((s: any) => s.inactivity_warned_at).length,
         todayCheckins: Object.entries(statusCounts).map(([status, count]) => ({ status, count })),
         weekTrend,
         moodCounts,
-        recentAlerts: (alerts || []).map((a) => ({
+        recentAlerts: (alerts || []).filter((a) => !adminSeniorIds.includes(a.senior_id)).map((a) => ({
           id: a.id,
           senior_name: seniorNames[a.senior_id] || "Unknown",
           contact_name: a.contact_name || "—",
@@ -255,7 +272,7 @@ export default function AdminOverview() {
         <div>
           <h1 className="text-2xl font-black tracking-tight">Admin Overview</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {stats.totalSeniors} registered users
+            {stats.totalSeniors} registered user{stats.totalSeniors !== 1 ? "s" : ""}
             {lastUpdated && (
               <span className="ml-2 text-xs">
                 · updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
@@ -291,7 +308,7 @@ export default function AdminOverview() {
             icon={CheckCircle2}
             color="text-emerald-600"
             bg="bg-emerald-500/10"
-            onClick={() => navigate("/admin/seniors?today=SAFE")}
+            onClick={() => navigate("/admin/users?today=SAFE")}
           />
           <StatCard
             label="Missed Today"
@@ -299,7 +316,7 @@ export default function AdminOverview() {
             icon={AlertTriangle}
             color="text-red-600"
             bg="bg-red-500/10"
-            onClick={() => navigate("/admin/seniors?today=MISSED")}
+            onClick={() => navigate("/admin/users?today=MISSED")}
             urgent
           />
           <StatCard
@@ -308,7 +325,7 @@ export default function AdminOverview() {
             icon={Clock}
             color="text-amber-600"
             bg="bg-amber-500/10"
-            onClick={() => navigate("/admin/seniors?today=PENDING")}
+            onClick={() => navigate("/admin/users?today=PENDING")}
           />
           <StatCard
             label="Check-In Rate"
@@ -331,7 +348,7 @@ export default function AdminOverview() {
             icon={MessageSquare}
             color="text-emerald-600"
             bg="bg-emerald-500/10"
-            onClick={() => navigate("/admin/seniors?sms=confirmed")}
+            onClick={() => navigate("/admin/users?sms=confirmed")}
           />
           <StatCard
             label="Awaiting YES Reply"
@@ -339,7 +356,7 @@ export default function AdminOverview() {
             icon={Clock}
             color="text-amber-600"
             bg="bg-amber-500/10"
-            onClick={() => navigate("/admin/seniors?sms=requested")}
+            onClick={() => navigate("/admin/users?sms=requested")}
           />
           <StatCard
             label="Opted Out"
@@ -347,7 +364,7 @@ export default function AdminOverview() {
             icon={UserX}
             color="text-red-600"
             bg="bg-red-500/10"
-            onClick={() => navigate("/admin/seniors?sms=opted_out")}
+            onClick={() => navigate("/admin/users?sms=opted_out")}
           />
           <StatCard
             label="No SMS Set Up"
@@ -355,7 +372,7 @@ export default function AdminOverview() {
             icon={BellOff}
             color="text-muted-foreground"
             bg="bg-muted"
-            onClick={() => navigate("/admin/seniors?sms=none")}
+            onClick={() => navigate("/admin/users?sms=none")}
           />
         </div>
       </div>
@@ -365,12 +382,12 @@ export default function AdminOverview() {
         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Accounts & Contacts</p>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
-            label="Total Seniors"
+            label="Total Users"
             value={stats.totalSeniors}
             icon={Users}
             color="text-primary"
             bg="bg-primary/10"
-            onClick={() => navigate("/admin/seniors")}
+            onClick={() => navigate("/admin/users")}
           />
           <StatCard
             label="Active Accounts"
@@ -378,7 +395,7 @@ export default function AdminOverview() {
             icon={Activity}
             color="text-emerald-600"
             bg="bg-emerald-500/10"
-            onClick={() => navigate("/admin/seniors?status=active")}
+            onClick={() => navigate("/admin/users?status=active")}
           />
           <StatCard
             label="Paused"
@@ -386,7 +403,7 @@ export default function AdminOverview() {
             icon={Pause}
             color="text-amber-600"
             bg="bg-amber-500/10"
-            onClick={() => navigate("/admin/seniors?status=paused")}
+            onClick={() => navigate("/admin/users?status=paused")}
           />
           <StatCard
             label="Alerts (Last 7 Days)"
@@ -435,7 +452,7 @@ export default function AdminOverview() {
             onClick={() => navigate("/admin/contacts?filter=opted_out")}
           />
           <StatCard
-            label="Avg ECs / Senior"
+            label="Avg ECs / User"
             value={stats.totalSeniors > 0 ? (stats.totalECs / stats.totalSeniors).toFixed(1) : "0"}
             icon={Smile}
             color="text-primary"

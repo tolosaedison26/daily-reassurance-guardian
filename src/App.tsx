@@ -90,8 +90,10 @@ const App = () => (
 
             {/* Admin routes — lazy loaded */}
             <Route path="/admin" element={<Suspense fallback={null}><AdminRoute><AdminOverview /></AdminRoute></Suspense>} />
-            <Route path="/admin/seniors" element={<Suspense fallback={null}><AdminRoute><AdminSeniors /></AdminRoute></Suspense>} />
-            <Route path="/admin/seniors/:id" element={<Suspense fallback={null}><AdminRoute><AdminSeniorDetail /></AdminRoute></Suspense>} />
+            <Route path="/admin/users" element={<Suspense fallback={null}><AdminRoute><AdminSeniors /></AdminRoute></Suspense>} />
+            <Route path="/admin/users/:id" element={<Suspense fallback={null}><AdminRoute><AdminSeniorDetail /></AdminRoute></Suspense>} />
+            <Route path="/admin/seniors" element={<Navigate to="/admin/users" replace />} />
+            <Route path="/admin/seniors/:id" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/contacts" element={<Suspense fallback={null}><AdminRoute><AdminEmergencyContacts /></AdminRoute></Suspense>} />
 
             {/* Legacy caregiver URLs → redirect to /home */}

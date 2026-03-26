@@ -25,6 +25,7 @@ interface Senior {
   timezone: string | null;
   grace_period_minutes: number | null;
   created_at: string;
+  profile_id: string;
   ec_count: number;
   today_status: string | null;
 }
@@ -94,11 +95,18 @@ export default function AdminSeniors() {
     try {
       const today = new Date().toISOString().split("T")[0];
 
+      // Get admin profile_ids to exclude
+      const { data: adminProfiles } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("role", "admin");
+      const adminProfileIds = (adminProfiles || []).map((p) => p.user_id);
+
       const [{ data: seniorData }, { data: ecCounts }, { data: todayCheckins }] =
         await Promise.all([
           supabase
             .from("seniors")
-            .select("id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, created_at")
+            .select("id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, created_at, profile_id")
             .order("created_at", { ascending: false }),
           supabase.from("emergency_contacts").select("senior_id"),
           supabase
@@ -118,11 +126,13 @@ export default function AdminSeniors() {
       });
 
       setSeniors(
-        (seniorData || []).map((s) => ({
-          ...s,
-          ec_count: ecCountMap[s.id] || 0,
-          today_status: checkinMap[s.id] || null,
-        }))
+        (seniorData || [])
+          .filter((s) => !adminProfileIds.includes(s.profile_id))
+          .map((s) => ({
+            ...s,
+            ec_count: ecCountMap[s.id] || 0,
+            today_status: checkinMap[s.id] || null,
+          }))
       );
     } finally {
       setLoading(false);
@@ -151,9 +161,9 @@ export default function AdminSeniors() {
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">All Seniors</h1>
+          <h1 className="text-2xl font-black tracking-tight">All Users</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {seniors.length} registered senior{seniors.length !== 1 ? "s" : ""}
+            {seniors.length} registered user{seniors.length !== 1 ? "s" : ""}
           </p>
         </div>
         <Button
@@ -194,11 +204,11 @@ export default function AdminSeniors() {
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground animate-pulse">
-              Loading seniors...
+              Loading users...
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              {search || activeFilterKey ? "No matching seniors" : "No seniors registered yet"}
+              {search || activeFilterKey ? "No matching users" : "No users registered yet"}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -220,7 +230,7 @@ export default function AdminSeniors() {
                     <TableRow
                       key={s.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => navigate(`/admin/seniors/${s.id}`)}
+                      onClick={() => navigate(`/admin/users/${s.id}`)}
                     >
                       <TableCell className="font-semibold">
                         {s.name || "—"}

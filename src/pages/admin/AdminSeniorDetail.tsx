@@ -122,10 +122,10 @@ export default function AdminSeniorDetail() {
   if (!senior) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">Senior not found.</p>
+        <p className="text-muted-foreground">User not found.</p>
         <Button
           variant="ghost"
-          onClick={() => navigate("/admin/seniors")}
+          onClick={() => navigate("/admin/users")}
           className="mt-4 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
@@ -158,7 +158,7 @@ export default function AdminSeniorDetail() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/admin/seniors")}
+            onClick={() => navigate("/admin/users")}
             className="cursor-pointer shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />

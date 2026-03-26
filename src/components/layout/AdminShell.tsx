@@ -12,7 +12,7 @@ import {
 
 const adminNav = [
   { path: "/admin", label: "Overview", icon: LayoutDashboard },
-  { path: "/admin/seniors", label: "Seniors", icon: Users },
+  { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/contacts", label: "Emergency Contacts", icon: Phone },
 ];
 
