@@ -11,7 +11,6 @@ import { triggerSmsWebhook, normalizePhone, formatPhoneDisplay } from "@/lib/sup
 import CheckInTimeEditor from "@/components/CheckInTimeEditor";
 
 export default function AccountSettingsPage() {
-  const navigate = useNavigate();
   const { user, profile, refreshProfile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
