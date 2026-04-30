@@ -8,8 +8,8 @@ export default function AcknowledgmentPage() {
   const demo = {
     seniorName: "Dorothy Wilson",
     seniorAge: 75,
-    missedTime: "9:00 AM",
-    alertSentTime: "9:45 AM",
+    missedTime: "6:00 PM",
+    alertSentTime: "6:45 PM",
     contactName: "Sarah Johnson",
     contactRelationship: "Daughter",
     seniorPhone: "+1 (555) 987-6543",

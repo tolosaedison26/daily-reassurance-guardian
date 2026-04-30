@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, Users, CheckCircle, MessageSquare, Plus, Trash2, Loader2 } from "lucide-react";
+import { ShieldCheck, Users, CheckCircle, MessageSquare, Pill, Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,7 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
   const [contactsSaving, setContactsSaving] = useState(false);
   const [contactsSaved, setContactsSaved] = useState(false);
 
-  const totalScreens = 4;
+  const totalScreens = 5;
 
   // Escape key skips the walkthrough
   useEffect(() => {
@@ -405,8 +405,51 @@ export default function SeniorWalkthrough({ firstName, seniorId, onComplete, onC
         </div>
       )}
 
-      {/* Screen 4 — Practice Check-in */}
+      {/* Screen 4 — Medications */}
       {screen === 3 && (
+        <div className="max-w-md w-full text-center space-y-6 animate-bounce-in py-8">
+          <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: "hsl(var(--primary) / 0.12)" }}>
+            <Pill className="w-8 h-8" style={{ color: "hsl(var(--primary))" }} />
+          </div>
+          <h1 className="font-black text-foreground" style={{ fontSize: "24px", lineHeight: "32px" }}>
+            Track Your Medications
+          </h1>
+          <p className="text-foreground" style={{ fontSize: "20px", lineHeight: "30px" }}>
+            Add your daily medications and keep track of every dose — right from your dashboard.
+          </p>
+
+          <div className="space-y-2 text-left">
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5" style={{ background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>1</span>
+              <p className="text-sm text-foreground">Go to the <span className="font-bold">Medications</span> tab to add your medications</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5" style={{ background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>2</span>
+              <p className="text-sm text-foreground">Set how often you take each one and what time</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5" style={{ background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>3</span>
+              <p className="text-sm text-foreground">Each day, tap <span className="font-bold">Take</span> or <span className="font-bold">Skip</span> for each dose</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5" style={{ background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>4</span>
+              <p className="text-sm text-foreground">With SMS enabled, you'll get a <span className="font-bold">daily morning text</span> reminding you to check your schedule</p>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => setScreen(4)}
+            className="w-full rounded-2xl font-bold border-0"
+            style={{ minHeight: "64px", fontSize: "18px", background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+          >
+            Next →
+          </Button>
+          <DotIndicator />
+        </div>
+      )}
+
+      {/* Screen 5 — Practice Check-in */}
+      {screen === 4 && (
         <div className="max-w-md w-full text-center space-y-6 animate-bounce-in py-8">
           <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center" style={{ background: "hsl(var(--status-checked) / 0.12)" }}>
             <CheckCircle className="w-10 h-10" style={{ color: "hsl(var(--status-checked))" }} />

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Music, ChevronLeft, MessageSquare, ChevronRight } from "lucide-react";
+import { Music, ChevronLeft, MessageSquare, ChevronRight, Pill } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { triggerSmsWebhook } from "@/lib/supabase-helpers";
@@ -11,21 +12,24 @@ import CheckinSuccessScreen from "@/components/senior/CheckinSuccessScreen";
 import SeniorWalkthrough from "@/components/senior/SeniorWalkthrough";
 import SeniorEmergencyContactsCard from "@/components/senior/SeniorEmergencyContactsCard";
 import CheckInTimeEditor from "@/components/CheckInTimeEditor";
+import { PillReminder, PillDose, formatTime12h } from "@/types/pill-reminders";
 
 type CheckInStatus = "checked" | "pending" | "none";
 
 export default function SeniorHome() {
   const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<CheckInStatus>("none");
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [showSound, setShowSound] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedMood, setSelectedMood] = useState<"great" | "okay" | "not-great" | null>(null);
   const [loading, setLoading] = useState(false);
-  const [reminderTime, setReminderTime] = useState("09:00");
+  const [reminderTime, setReminderTime] = useState("18:00");
   const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
   const [seniorRecordId, setSeniorRecordId] = useState<string | null>(null);
   const [smsStatus, setSmsStatus] = useState<string>("none");
+  const [nextMedText, setNextMedText] = useState<string | null>(null);
 
   // Walkthrough: versioned key so users see updated walkthrough after major changes
   const walkthroughKey = `walkthrough_v2_${user?.id}`;
@@ -67,10 +71,11 @@ export default function SeniorHome() {
 
     if (senior) {
       setSeniorRecordId(senior.id);
-      const time = senior.check_in_time ? senior.check_in_time.slice(0, 5) : "09:00";
+      const time = senior.check_in_time ? senior.check_in_time.slice(0, 5) : "18:00";
       setReminderTime(time);
       setSmsStatus(senior.sms_consent_status || "none");
       await loadTodayStatus(senior.id, time);
+      loadNextMed(senior.id);
     } else {
       setStatus("none");
     }
@@ -98,6 +103,49 @@ export default function SeniorHome() {
       const reminderHour = parseInt(timeStr.split(":")[0]);
       setStatus(now.getHours() >= reminderHour ? "pending" : "none");
     }
+  };
+
+  const loadNextMed = async (sId: string) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const nowHHMM = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+
+    const [{ data: meds }, { data: todayDoses }] = await Promise.all([
+      supabase.from("pill_reminders").select("id, medication_name, times, paused").eq("senior_id", sId),
+      supabase.from("pill_doses").select("pill_reminder_id, scheduled_time, status").eq("senior_id", sId).eq("scheduled_date", todayStr),
+    ]);
+
+    if (!meds || meds.length === 0) {
+      setNextMedText(null);
+      return;
+    }
+
+    const activeMeds = (meds as PillReminder[]).filter((m) => !m.paused && m.times?.length > 0);
+    if (activeMeds.length === 0) {
+      setNextMedText(null);
+      return;
+    }
+
+    // Build pending slots
+    const doseMap = new Map((todayDoses || []).map((d: any) => [`${d.pill_reminder_id}-${d.scheduled_time}`, d.status]));
+    const pending: { name: string; time: string }[] = [];
+    for (const med of activeMeds) {
+      for (const t of med.times) {
+        const status = doseMap.get(`${med.id}-${t}`);
+        if (!status || status === "PENDING") {
+          pending.push({ name: med.medication_name, time: t });
+        }
+      }
+    }
+
+    if (pending.length === 0) {
+      setNextMedText("All done for today");
+      return;
+    }
+
+    // Find next upcoming (or earliest pending)
+    pending.sort((a, b) => a.time.localeCompare(b.time));
+    const next = pending.find((p) => p.time >= nowHHMM) || pending[0];
+    setNextMedText(`Next: ${next.name} at ${formatTime12h(next.time)}`);
   };
 
   const handleCheckIn = async (mood?: "great" | "okay" | "not-great") => {
@@ -412,6 +460,33 @@ export default function SeniorHome() {
               Safety Network
             </p>
             <SeniorEmergencyContactsCard seniorId={seniorRecordId} />
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════
+            MEDICATIONS WIDGET
+        ═══════════════════════════════════════════ */}
+        {seniorRecordId && (
+          <div className="mt-8">
+            <button
+              onClick={() => navigate("/medications")}
+              className="w-full flex items-center gap-4 p-5 rounded-2xl bg-card border border-border active:scale-[0.98] transition-transform"
+              style={{ minHeight: "72px", boxShadow: "var(--shadow-card)" }}
+            >
+              <div
+                className="w-14 h-14 min-w-[56px] min-h-[56px] rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "hsl(var(--primary) / 0.1)" }}
+              >
+                <Pill className="w-6 h-6" style={{ color: "hsl(var(--primary))" }} />
+              </div>
+              <div className="text-left flex-1 min-w-0">
+                <p className="font-bold" style={{ fontSize: "18px" }}>Medications</p>
+                <p className="text-muted-foreground truncate" style={{ fontSize: "16px" }}>
+                  {nextMedText || "Set up your medications"}
+                </p>
+              </div>
+              <ChevronRight className="ml-auto w-5 h-5 text-muted-foreground shrink-0" />
+            </button>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Users, CheckCircle, MessageSquare, Clock, LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, CheckCircle, MessageSquare, Clock, Pill, LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DashboardGuideProps {
   onClose: () => void;
@@ -60,6 +60,22 @@ const steps = [
       "Pick the hour and AM/PM that fits your daily routine",
       "Your new time takes effect the next day",
       "You can change it once per week",
+    ],
+  },
+  {
+    icon: Pill,
+    iconBg: "hsl(var(--primary) / 0.12)",
+    iconColor: "hsl(var(--primary))",
+    title: "Track Your Medications",
+    description: "Add your medications and track each dose throughout the day.",
+    details: [
+      "Go to the Medications page from the menu",
+      "Tap 'Add Medication' to add a new one, or pick from common presets",
+      "Set the name, dosage, how often you take it, and the time(s)",
+      "Each day, your schedule shows all upcoming doses",
+      "Tap 'Take' or 'Skip' next to each dose to track it",
+      "With SMS enabled, you'll receive a daily morning text reminding you to check your schedule",
+      "You can pause or delete a medication any time",
     ],
   },
   {

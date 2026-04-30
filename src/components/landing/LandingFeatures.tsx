@@ -1,4 +1,4 @@
-import { SmartphoneNfc, GitBranch, Heart, Clock, Bell, Shield } from "lucide-react";
+import { SmartphoneNfc, GitBranch, Heart, Pill, Bell, Shield } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 const iconColors = [
@@ -33,9 +33,9 @@ const features = [
     ci: 0,
   },
   {
-    icon: Clock,
-    title: "Flexible Timing",
-    desc: "Choose your preferred check-in time. Morning person? Set it for 8 AM. Night owl? Set it for noon. You're in control.",
+    icon: Pill,
+    title: "Medication Tracking",
+    desc: "Add your daily medications, set dose times, and track each one with a tap. Get a daily morning SMS reminder to check your schedule.",
     ci: 1,
   },
   {

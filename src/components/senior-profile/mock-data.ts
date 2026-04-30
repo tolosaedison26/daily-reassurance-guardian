@@ -126,7 +126,7 @@ export function generateTimelineEvents(): TimelineEvent[] {
   events.push({ id: "t11", type: "checkin", label: "Checked in · Mood: 😊 Great", timestamp: new Date(d10.getFullYear(), d10.getMonth(), d10.getDate(), 7, 58), mood: "great" });
 
   const d14 = subDays(now, 14);
-  events.push({ id: "t12", type: "edit", label: "Profile updated", subText: "Check-in time changed to 8:00 AM", timestamp: new Date(d14.getFullYear(), d14.getMonth(), d14.getDate(), 9, 0) });
+  events.push({ id: "t12", type: "edit", label: "Profile updated", subText: "Check-in time changed to 6:00 PM", timestamp: new Date(d14.getFullYear(), d14.getMonth(), d14.getDate(), 18, 0) });
 
   const d20 = subDays(now, 20);
   events.push({ id: "t13", type: "checkin", label: "Checked in · Mood: 😊 Great", timestamp: new Date(d20.getFullYear(), d20.getMonth(), d20.getDate(), 8, 5), mood: "great" });

@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("+1 ");
   const [smsConsent, setSmsConsent] = useState(true);
+  const [tosAccepted, setTosAccepted] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -96,6 +97,9 @@ export default function AuthPage() {
           const updates: Record<string, any> = {};
           if (cleanPhone.length >= 10) updates.phone = cleanPhone;
           if (smsConsent) updates.sms_consent_status = "requested";
+          // Set timezone from browser so check-in time (6 PM) is in the user's local time
+          const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (detectedTz) updates.timezone = detectedTz;
           if (Object.keys(updates).length > 0) {
             await supabase.from("seniors").update(updates).eq("id", senior.id);
           }
@@ -226,17 +230,33 @@ export default function AuthPage() {
             )}
 
             {mode === "signup" && (
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={smsConsent}
-                  onChange={(e) => setSmsConsent(e.target.checked)}
-                  className="mt-1 w-4 h-4 accent-primary"
-                />
-                <span className="text-xs text-muted-foreground leading-relaxed">
-                  <span className="font-bold text-foreground">(Optional)</span> Please check here to authorize Daily Guardian to send your daily check-in and safety SMS. We need this permission to keep you updated! Reply YES to the confirmation text to activate, or STOP to unsubscribe.
-                </span>
-              </label>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={smsConsent}
+                    onChange={(e) => setSmsConsent(e.target.checked)}
+                    className="mt-1 w-4 h-4 accent-primary"
+                  />
+                  <span className="text-xs text-muted-foreground leading-relaxed">
+                    <span className="font-bold text-foreground">(Optional)</span> Please check here to authorize Daily Guardian to send your daily check-in and safety SMS. We need this permission to keep you updated! Reply YES to the confirmation text to activate, or STOP to unsubscribe.
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tosAccepted}
+                    onChange={(e) => setTosAccepted(e.target.checked)}
+                    className="mt-1 w-4 h-4 accent-primary"
+                  />
+                  <span className="text-xs text-muted-foreground leading-relaxed">
+                    I agree to the Daily Guardian{" "}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary font-bold underline underline-offset-2 hover:no-underline">Terms of Service</a>
+                    {" "}and{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-bold underline underline-offset-2 hover:no-underline">Privacy Policy</a>.
+                  </span>
+                </label>
+              </div>
             )}
 
             {error && (
@@ -252,7 +272,7 @@ export default function AuthPage() {
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || (mode === "signup" && !tosAccepted)}
               className="w-full h-14 text-lg font-black rounded-2xl border-0 shadow-btn mt-2"
               style={{ background: "hsl(var(--status-checked))", color: "#fff" }}
             >

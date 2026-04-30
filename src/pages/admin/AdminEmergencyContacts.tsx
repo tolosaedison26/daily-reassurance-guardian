@@ -58,12 +58,30 @@ export default function AdminEmergencyContacts() {
   const loadContacts = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
     try {
+      // Get admin senior IDs to exclude
+      const { data: adminProfiles } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("role", "admin");
+      const adminProfileIds = (adminProfiles || []).map((p) => p.user_id);
+      let adminSeniorIds: string[] = [];
+      if (adminProfileIds.length > 0) {
+        const { data: adminSeniors } = await supabase
+          .from("seniors")
+          .select("id")
+          .in("profile_id", adminProfileIds);
+        adminSeniorIds = (adminSeniors || []).map((s) => s.id);
+      }
+
       const { data: ecData } = await supabase
         .from("emergency_contacts")
         .select("id, name, phone, email, relationship, opted_out, notify_via_sms, notify_via_email, senior_id")
         .order("name");
 
-      const seniorIds = [...new Set((ecData || []).map((ec) => ec.senior_id))];
+      // Filter out admin-linked contacts
+      const filteredEcs = (ecData || []).filter((ec) => !adminSeniorIds.includes(ec.senior_id));
+
+      const seniorIds = [...new Set(filteredEcs.map((ec) => ec.senior_id))];
       let seniorNames: Record<string, string> = {};
       if (seniorIds.length > 0) {
         const { data: sNames } = await supabase
@@ -76,7 +94,7 @@ export default function AdminEmergencyContacts() {
       }
 
       setContacts(
-        (ecData || []).map((ec) => ({
+        filteredEcs.map((ec) => ({
           ...ec,
           senior_name: seniorNames[ec.senior_id] || "Unknown",
         }))

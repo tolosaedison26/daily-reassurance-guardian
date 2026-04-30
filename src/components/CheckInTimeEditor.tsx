@@ -87,7 +87,7 @@ export default function CheckInTimeEditor({ seniorId, compact = false }: CheckIn
       .eq("id", seniorId)
       .maybeSingle();
 
-    const time = data?.check_in_time || "09:00";
+    const time = data?.check_in_time || "18:00";
     setCurrentTime(time);
     const parsed = parse12h(time);
     setHour(parsed.hour);

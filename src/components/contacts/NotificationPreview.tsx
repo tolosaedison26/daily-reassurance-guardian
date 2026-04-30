@@ -57,9 +57,9 @@ export default function NotificationPreview({ seniorName, firstContact }: Notifi
           <span className="text-xs font-bold text-muted-foreground">SMS Preview</span>
         </div>
         <div className="bg-card rounded-xl p-3 border border-border shadow-sm text-sm space-y-1.5">
-          <p className="text-xs text-muted-foreground font-bold">Daily Guardian · Today at 9:05 AM</p>
+          <p className="text-xs text-muted-foreground font-bold">Daily Guardian · Today at 6:05 PM</p>
           <p>
-            Hi {firstContact.name.split(" ")[0]} — {seniorName} missed their 8:00 AM check-in.
+            Hi {firstContact.name.split(" ")[0]} — {seniorName} missed their 6:00 PM check-in.
             Please check on them.
           </p>
           <p className="text-muted-foreground text-xs mt-2">

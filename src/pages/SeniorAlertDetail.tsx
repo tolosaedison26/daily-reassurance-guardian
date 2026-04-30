@@ -6,17 +6,17 @@ import EscalationLadder from "@/components/EscalationLadder";
 
 const DEMO = {
   name: "Dorothy Wilson", age: 75, phone: "+1 (555) 987-6543", initials: "DW",
-  dueTime: "9:00 AM", overdueText: "1h 45min", lastCheckIn: "Yesterday, Feb 26 at 8:03 AM",
+  dueTime: "6:00 PM", overdueText: "1h 45min", lastCheckIn: "Yesterday, Feb 26 at 6:03 PM",
   steps: [
-    { level: 1, contactName: "Sarah Johnson", relationship: "Daughter", channels: ["sms", "email"] as ("sms" | "email")[], status: "active" as const, timeSent: "9:45 AM", countdownText: "Escalates to Contact #2 in 14 min" },
-    { level: 2, contactName: "James Ross", relationship: "Son", channels: ["sms"] as ("sms" | "email")[], status: "pending" as const, scheduledTime: "10:15 AM" },
-    { level: 3, contactName: "Dr. Patel", relationship: "Physician", channels: ["email"] as ("sms" | "email")[], status: "pending" as const, scheduledTime: "10:45 AM" },
+    { level: 1, contactName: "Sarah Johnson", relationship: "Daughter", channels: ["sms", "email"] as ("sms" | "email")[], status: "active" as const, timeSent: "6:45 PM", countdownText: "Escalates to Contact #2 in 14 min" },
+    { level: 2, contactName: "James Ross", relationship: "Son", channels: ["sms"] as ("sms" | "email")[], status: "pending" as const, scheduledTime: "7:15 PM" },
+    { level: 3, contactName: "Dr. Patel", relationship: "Physician", channels: ["email"] as ("sms" | "email")[], status: "pending" as const, scheduledTime: "7:45 PM" },
   ],
   timeline: [
-    { time: "9:00 AM", label: "Check-in due (missed)", past: true },
-    { time: "9:00 AM", label: "Reminder SMS sent", past: true },
-    { time: "9:45 AM", label: "Alert sent to Contact #1", past: true },
-    { time: "10:15 AM", label: "Escalate to Contact #2", past: false },
+    { time: "6:00 PM", label: "Check-in due (missed)", past: true },
+    { time: "6:00 PM", label: "Reminder SMS sent", past: true },
+    { time: "6:45 PM", label: "Alert sent to Contact #1", past: true },
+    { time: "7:15 PM", label: "Escalate to Contact #2", past: false },
   ],
 };
 
