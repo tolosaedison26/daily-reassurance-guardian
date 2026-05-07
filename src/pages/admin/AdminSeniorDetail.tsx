@@ -12,10 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Phone, Clock, Shield, User, RefreshCw } from "lucide-react";
+import { ArrowLeft, Phone, Clock, Shield, User, RefreshCw, Trash2 } from "lucide-react";
 
 interface SeniorInfo {
   id: string;
+  profile_id: string;
   name: string;
   phone: string | null;
   check_in_time: string | null;
@@ -62,6 +63,8 @@ export default function AdminSeniorDetail() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteState, setDeleteState] = useState<"idle" | "confirming" | "deleting">("idle");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) loadData(id);
@@ -78,7 +81,7 @@ export default function AdminSeniorDetail() {
       ] = await Promise.all([
         supabase
           .from("seniors")
-          .select("id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, created_at")
+          .select("id, profile_id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, created_at")
           .eq("id", seniorId)
           .maybeSingle(),
         supabase
@@ -107,6 +110,21 @@ export default function AdminSeniorDetail() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!senior) return;
+    setDeleteState("deleting");
+    setDeleteError(null);
+    const { error } = await supabase.rpc("admin_delete_user", {
+      p_user_id: senior.profile_id,
+    } as never);
+    if (error) {
+      setDeleteError(error.message || "Failed to delete user");
+      setDeleteState("confirming");
+    } else {
+      navigate("/admin/users");
     }
   }
 
@@ -388,6 +406,71 @@ export default function AdminSeniorDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Danger Zone */}
+      <Card className="border border-destructive/30 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-bold text-destructive">
+            Danger Zone
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {deleteState === "idle" && (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Remove this user</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Permanently deletes the account and all associated data — check-ins, contacts, medications, games.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteState("confirming")}
+                className="shrink-0 gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove User
+              </Button>
+            </div>
+          )}
+
+          {(deleteState === "confirming" || deleteState === "deleting") && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-foreground">
+                Are you sure you want to permanently delete{" "}
+                <span className="text-destructive">{senior.name}</span>?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This will delete their account, all check-ins, emergency contacts, medications, games history, and remove them from the platform entirely. This cannot be undone.
+              </p>
+              {deleteError && (
+                <p className="text-xs font-semibold text-destructive">{deleteError}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={deleteState === "deleting"}
+                  className="gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deleteState === "deleting" ? "Deleting…" : "Yes, Delete Permanently"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setDeleteState("idle"); setDeleteError(null); }}
+                  disabled={deleteState === "deleting"}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

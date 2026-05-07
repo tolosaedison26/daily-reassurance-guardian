@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, ChevronRight, X, RefreshCw } from "lucide-react";
+import { Search, ChevronRight, X, RefreshCw, Trash2 } from "lucide-react";
 
 interface Senior {
   id: string;
@@ -76,6 +76,8 @@ export default function AdminSeniors() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -138,6 +140,18 @@ export default function AdminSeniors() {
       setLoading(false);
       setRefreshing(false);
     }
+  }
+
+  async function handleDelete(profileId: string) {
+    setDeletingId(profileId);
+    const { error } = await supabase.rpc("admin_delete_user", {
+      p_user_id: profileId,
+    } as never);
+    if (!error) {
+      setSeniors((prev) => prev.filter((s) => s.profile_id !== profileId));
+    }
+    setDeletingId(null);
+    setConfirmDeleteId(null);
   }
 
   const filtered = seniors.filter((s) => {
@@ -223,10 +237,39 @@ export default function AdminSeniors() {
                     <TableHead className="font-bold text-center">ECs</TableHead>
                     <TableHead className="font-bold">Status</TableHead>
                     <TableHead className="w-10" />
+                    <TableHead className="w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((s) => (
+                    confirmDeleteId === s.profile_id ? (
+                      <TableRow key={s.id} className="bg-destructive/5">
+                        <TableCell colSpan={7} className="py-3">
+                          <span className="text-sm font-semibold text-foreground">
+                            Delete <span className="text-destructive">{s.name}</span>? This cannot be undone.
+                          </span>
+                        </TableCell>
+                        <TableCell colSpan={2} className="py-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={deletingId === s.profile_id}
+                              onClick={(e) => { e.stopPropagation(); handleDelete(s.profile_id); }}
+                            >
+                              {deletingId === s.profile_id ? "Deleting…" : "Delete"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
                     <TableRow
                       key={s.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -267,7 +310,17 @@ export default function AdminSeniors() {
                       <TableCell>
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(s.profile_id); }}
+                          aria-label={`Delete ${s.name}`}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </TableCell>
                     </TableRow>
+                    )
                   ))}
                 </TableBody>
               </Table>

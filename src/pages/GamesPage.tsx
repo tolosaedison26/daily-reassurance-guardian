@@ -115,6 +115,7 @@ export default function GamesPage() {
       await deleteMatch(id);
       setActiveVs((prev) => prev.filter((g) => g.id !== id));
       setRecentGames((prev) => prev.filter((g) => g.id !== id));
+      loadStats();
     } catch {
       // silently ignore
     }
