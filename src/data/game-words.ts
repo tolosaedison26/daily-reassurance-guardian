@@ -23,7 +23,7 @@ export const GAME_WORDS: string[] = [
   "HERON",
   // Colors & Materials (15)
   "SILVER", "GOLDEN", "COPPER", "VIOLET", "IVORY", "AMBER", "AZURE",
-  "PEARL", "CRYSTAL", "SATIN", "LINEN", "CEDAR", "BRASS", "SLATE", "OLIVE",
+  "PEARL", "CRYSTAL", "SATIN", "LINEN", "CEDAR", "BRASS", "SLATE", "MAPLE",
   // People & Feelings (20)
   "FAMILY", "FRIEND", "SMILE", "HEART", "DANCE", "LAUGH", "STORY",
   "MUSIC", "DREAM", "PEACE", "GRACE", "CHARM", "TRUST", "FAITH",

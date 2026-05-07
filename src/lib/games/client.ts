@@ -67,38 +67,23 @@ export async function createVsMatch(userId: string, gameType: GameType) {
   return { match, inviteCode: code };
 }
 
-/** Join a VS match via invite code */
-export async function joinVsMatch(inviteCode: string, userId: string) {
-  // Find the invitation
-  const { data: invitation, error: findErr } = await supabase
-    .from("games_invitations")
-    .select("*")
-    .eq("invite_code", inviteCode.toUpperCase().trim())
-    .eq("status", "pending")
-    .maybeSingle();
+/** Join a VS match via invite code (uses SECURITY DEFINER RPC to bypass RLS) */
+export async function joinVsMatch(inviteCode: string, _userId: string) {
+  const { data, error } = await supabase.rpc("join_game", {
+    p_invite_code: inviteCode,
+  });
 
-  if (findErr) throw findErr;
-  if (!invitation) throw new Error("Invalid or expired invite code");
+  if (error) {
+    // Map Postgres exceptions to user-friendly messages
+    const msg = error.message || "";
+    if (msg.includes("Invalid or expired")) throw new Error("Invalid or expired invite code");
+    if (msg.includes("your own game")) throw new Error("You can't join your own game");
+    if (msg.includes("expired")) throw new Error("This invite code has expired");
+    if (msg.includes("no longer available")) throw new Error("This game is no longer available");
+    throw error;
+  }
 
-  const inv = invitation as unknown as GamesInvitation;
-  if (inv.inviter_id === userId) throw new Error("You can't join your own game");
-  if (!inv.match_id) throw new Error("No match linked to this invitation");
-
-  // Accept invitation
-  await supabase
-    .from("games_invitations")
-    .update({ invitee_id: userId, status: "accepted" } as never)
-    .eq("id", inv.id);
-
-  // Join the match
-  const { error: joinErr } = await supabase
-    .from("games_matches")
-    .update({ player_b_id: userId } as never)
-    .eq("id", inv.match_id);
-
-  if (joinErr) throw joinErr;
-
-  return inv.match_id;
+  return data as string;
 }
 
 /** Get a match by ID */
