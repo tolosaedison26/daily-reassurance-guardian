@@ -64,3 +64,25 @@ export interface MemoryCard {
   flipped: boolean;
   matched: boolean;
 }
+
+export interface GamesInvitation {
+  id: string;
+  inviter_id: string;
+  invitee_id: string | null;
+  invite_code: string;
+  match_id: string | null;
+  status: "pending" | "accepted" | "declined";
+  expires_at: string;
+  created_at: string;
+}
+
+export interface VsGameState {
+  words?: string[];
+  cardPairs?: { key: string; label: string }[];
+  cardOrder?: number[];
+  totalPairs?: number;
+  playerADone: boolean;
+  playerBDone: boolean;
+  playerAResult: GameResult | null;
+  playerBResult: GameResult | null;
+}

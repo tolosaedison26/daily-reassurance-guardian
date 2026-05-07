@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { Gamepad2, Type, Grid3X3, Trophy, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Gamepad2, Type, Grid3X3, Trophy, Loader2, Users, Swords } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getGameStats, getRecentMatches } from "@/lib/games/client";
-import type { GameType, GamesMatch } from "@/types/games";
+import { getGameStats, getRecentMatches, getActiveVsMatches, getPlayerName } from "@/lib/games/client";
+import type { GameType, GamesMatch, VsGameState } from "@/types/games";
 import WordScramble from "@/components/games/WordScramble";
 import MemoryMatch from "@/components/games/MemoryMatch";
 
@@ -10,23 +11,27 @@ type View = "hub" | "word_scramble" | "memory_match";
 
 export default function GamesPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<View>("hub");
   const [stats, setStats] = useState<{
     word_scramble: { played: number; totalScore: number; bestScore: number };
     memory_match: { played: number; totalScore: number; bestScore: number };
   } | null>(null);
   const [recentGames, setRecentGames] = useState<GamesMatch[]>([]);
+  const [activeVs, setActiveVs] = useState<GamesMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadStats = useCallback(async () => {
     if (!user) return;
     try {
-      const [s, recent] = await Promise.all([
+      const [s, recent, active] = await Promise.all([
         getGameStats(user.id),
         getRecentMatches(user.id, 5),
+        getActiveVsMatches(user.id),
       ]);
       setStats(s);
       setRecentGames(recent);
+      setActiveVs(active);
     } catch {
       // Stats are non-critical
     } finally {
@@ -40,7 +45,7 @@ export default function GamesPage() {
 
   function handleBack() {
     setView("hub");
-    loadStats(); // Refresh stats after a game
+    loadStats();
   }
 
   if (view === "word_scramble") {
@@ -77,6 +82,20 @@ export default function GamesPage() {
           </p>
         </div>
 
+        {/* Active VS matches */}
+        {activeVs.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
+              Active Games
+            </p>
+            <div className="space-y-2">
+              {activeVs.map((game) => (
+                <ActiveVsRow key={game.id} game={game} userId={user?.id || ""} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Game cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <GameCard
@@ -87,7 +106,8 @@ export default function GamesPage() {
             iconBg="bg-violet-200 dark:bg-violet-800/50"
             stats={stats?.word_scramble}
             loading={loading}
-            onClick={() => setView("word_scramble")}
+            onSolo={() => setView("word_scramble")}
+            onVs={() => navigate("/games/lobby?type=word_scramble")}
           />
           <GameCard
             title="Memory Match"
@@ -97,7 +117,8 @@ export default function GamesPage() {
             iconBg="bg-sky-200 dark:bg-sky-800/50"
             stats={stats?.memory_match}
             loading={loading}
-            onClick={() => setView("memory_match")}
+            onSolo={() => setView("memory_match")}
+            onVs={() => navigate("/games/lobby?type=memory_match")}
           />
         </div>
 
@@ -109,14 +130,14 @@ export default function GamesPage() {
             </p>
             <div className="space-y-2">
               {recentGames.map((game) => (
-                <RecentGameRow key={game.id} game={game} />
+                <RecentGameRow key={game.id} game={game} userId={user?.id || ""} />
               ))}
             </div>
           </div>
         )}
 
-        {/* Empty state if no games played */}
-        {!loading && recentGames.length === 0 && (
+        {/* Empty state */}
+        {!loading && recentGames.length === 0 && activeVs.length === 0 && (
           <div className="text-center py-8">
             <Gamepad2 className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-lg font-bold text-foreground">Ready to play?</p>
@@ -138,7 +159,8 @@ function GameCard({
   iconBg,
   stats,
   loading,
-  onClick,
+  onSolo,
+  onVs,
 }: {
   title: string;
   description: string;
@@ -147,13 +169,11 @@ function GameCard({
   iconBg: string;
   stats?: { played: number; totalScore: number; bestScore: number };
   loading: boolean;
-  onClick: () => void;
+  onSolo: () => void;
+  onVs: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`p-5 rounded-2xl border shadow-sm text-left transition-all hover:shadow-md hover:border-primary/30 active:scale-[0.98] min-h-[56px] ${color}`}
-    >
+    <div className={`p-5 rounded-2xl border shadow-sm ${color}`}>
       <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 ${iconBg}`}>
         {icon}
       </div>
@@ -171,12 +191,67 @@ function GameCard({
           </span>
         </div>
       ) : null}
+      {/* Play buttons */}
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={onSolo}
+          className="flex-1 py-3 rounded-xl bg-white/50 dark:bg-white/10 font-bold text-sm hover:bg-white/70 dark:hover:bg-white/20 transition-colors min-h-[48px]"
+        >
+          Play Solo
+        </button>
+        <button
+          onClick={onVs}
+          className="flex-1 py-3 rounded-xl bg-white/50 dark:bg-white/10 font-bold text-sm hover:bg-white/70 dark:hover:bg-white/20 transition-colors min-h-[48px] flex items-center justify-center gap-1.5"
+        >
+          <Swords className="w-4 h-4" />
+          VS
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ActiveVsRow({ game, userId }: { game: GamesMatch; userId: string }) {
+  const navigate = useNavigate();
+  const gameLabel = game.game_type === "word_scramble" ? "Word Scramble" : "Memory Match";
+  const state = game.game_state as unknown as VsGameState;
+  const isPlayerA = game.player_a_id === userId;
+  const myDone = isPlayerA ? state.playerADone : state.playerBDone;
+  const hasOpponent = !!game.player_b_id;
+
+  const status = !hasOpponent
+    ? "Waiting for opponent"
+    : myDone
+    ? "Waiting for their turn"
+    : "Your turn";
+
+  return (
+    <button
+      onClick={() => navigate(`/games/m/${game.id}`)}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-card border hover:border-primary/30 transition-colors text-left"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Swords className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">{gameLabel} VS</p>
+          <p className="text-xs text-muted-foreground">{status}</p>
+        </div>
+      </div>
+      {!myDone && hasOpponent && (
+        <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
+          Play
+        </span>
+      )}
     </button>
   );
 }
 
-function RecentGameRow({ game }: { game: GamesMatch }) {
+function RecentGameRow({ game, userId }: { game: GamesMatch; userId: string }) {
   const gameLabel = game.game_type === "word_scramble" ? "Word Scramble" : "Memory Match";
+  const isVs = game.mode === "vs";
+  const myScore = game.player_a_id === userId ? game.score_a : game.score_b;
   const date = new Date(game.created_at);
   const timeAgo = getTimeAgo(date);
 
@@ -189,11 +264,13 @@ function RecentGameRow({ game }: { game: GamesMatch }) {
           <Grid3X3 className="w-5 h-5 text-sky-500" />
         )}
         <div>
-          <p className="text-sm font-bold text-foreground">{gameLabel}</p>
+          <p className="text-sm font-bold text-foreground">
+            {gameLabel}{isVs ? " VS" : ""}
+          </p>
           <p className="text-xs text-muted-foreground">{timeAgo}</p>
         </div>
       </div>
-      <p className="text-lg font-black text-foreground">{game.score_a} pts</p>
+      <p className="text-lg font-black text-foreground">{myScore} pts</p>
     </div>
   );
 }

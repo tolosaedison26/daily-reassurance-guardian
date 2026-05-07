@@ -12,9 +12,13 @@ const FLIP_BACK_DELAY = 1500;
 
 interface Props {
   onBack: () => void;
+  /** Pre-determined cards for VS mode */
+  vsCards?: MemoryCard[];
+  /** Called when VS game completes (instead of showing ScoreCard) */
+  onVsComplete?: (result: GameResult) => void;
 }
 
-export default function MemoryMatch({ onBack }: Props) {
+export default function MemoryMatch({ onBack, vsCards, onVsComplete }: Props) {
   const { user } = useAuth();
   const [matchId, setMatchId] = useState<string | null>(null);
   const [cards, setCards] = useState<MemoryCard[]>([]);
@@ -29,10 +33,12 @@ export default function MemoryMatch({ onBack }: Props) {
   const [lastMatchedKey, setLastMatchedKey] = useState<string | null>(null);
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const isVs = !!vsCards;
+
   const initGame = useCallback(async () => {
     if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
     const pairs = 8;
-    const deck = buildCardDeck(pairs);
+    const deck = vsCards || buildCardDeck(pairs);
     setCards(deck);
     setFlipped([]);
     setScore(0);
@@ -44,7 +50,8 @@ export default function MemoryMatch({ onBack }: Props) {
     setResult(null);
     setLastMatchedKey(null);
 
-    if (user) {
+    // Only create a DB match for solo mode
+    if (user && !isVs) {
       try {
         const match = await createMatch(user.id, "memory_match", "solo", {
           totalPairs: pairs,
@@ -55,7 +62,7 @@ export default function MemoryMatch({ onBack }: Props) {
         // Game works without DB
       }
     }
-  }, [user]);
+  }, [user, isVs, vsCards]);
 
   useEffect(() => {
     initGame();
@@ -116,11 +123,15 @@ export default function MemoryMatch({ onBack }: Props) {
               totalPairs,
               moves: moves + 1,
             };
-            setResult(finalResult);
 
-            if (matchId && user) {
-              finishMatch(matchId, newScore).catch(() => {});
-              trackDailyActivity(user.id, moves + 1, true).catch(() => {});
+            if (onVsComplete) {
+              onVsComplete(finalResult);
+            } else {
+              setResult(finalResult);
+              if (matchId && user) {
+                finishMatch(matchId, newScore).catch(() => {});
+                trackDailyActivity(user.id, moves + 1, true).catch(() => {});
+              }
             }
           }
         }, 400);

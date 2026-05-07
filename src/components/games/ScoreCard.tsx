@@ -5,12 +5,30 @@ interface ScoreCardProps {
   result: GameResult;
   onPlayAgain: () => void;
   onBackToHub: () => void;
+  /** VS mode: opponent's score and name */
+  opponentScore?: number;
+  opponentName?: string;
 }
 
-export default function ScoreCard({ result, onPlayAgain, onBackToHub }: ScoreCardProps) {
+export default function ScoreCard({
+  result,
+  onPlayAgain,
+  onBackToHub,
+  opponentScore,
+  opponentName,
+}: ScoreCardProps) {
   const gameLabel = result.gameType === "word_scramble" ? "Word Scramble" : "Memory Match";
-  const isGreat = result.score >= 50;
-  const isGood = result.score >= 25;
+  const isVs = opponentScore !== undefined;
+
+  let vsOutcome: "won" | "lost" | "tie" | null = null;
+  if (isVs) {
+    if (result.score > opponentScore!) vsOutcome = "won";
+    else if (result.score < opponentScore!) vsOutcome = "lost";
+    else vsOutcome = "tie";
+  }
+
+  const isGreat = isVs ? vsOutcome === "won" : result.score >= 50;
+  const isGood = isVs ? vsOutcome === "tie" : result.score >= 25;
 
   return (
     <div className="flex flex-col items-center gap-6 py-6 animate-in fade-in duration-500">
@@ -23,14 +41,39 @@ export default function ScoreCard({ result, onPlayAgain, onBackToHub }: ScoreCar
         }`} />
       </div>
 
-      {/* Score */}
-      <div className="text-center">
-        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">
-          {gameLabel} Complete
+      {/* VS outcome */}
+      {isVs && vsOutcome && (
+        <p className={`text-2xl font-black ${
+          vsOutcome === "won" ? "text-emerald-600 dark:text-emerald-400"
+          : vsOutcome === "lost" ? "text-muted-foreground"
+          : "text-blue-600 dark:text-blue-400"
+        }`}>
+          {vsOutcome === "won" ? "You won!" : vsOutcome === "lost" ? "Nice effort!" : "It's a tie!"}
         </p>
-        <p className="text-5xl font-black text-foreground">{result.score}</p>
-        <p className="text-lg font-semibold text-muted-foreground mt-1">points</p>
-      </div>
+      )}
+
+      {/* Score comparison for VS */}
+      {isVs ? (
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <p className="text-sm font-bold text-muted-foreground mb-1">You</p>
+            <p className="text-4xl font-black text-foreground">{result.score}</p>
+          </div>
+          <span className="text-2xl font-bold text-muted-foreground">vs</span>
+          <div className="text-center">
+            <p className="text-sm font-bold text-muted-foreground mb-1">{opponentName || "Opponent"}</p>
+            <p className="text-4xl font-black text-foreground">{opponentScore}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center">
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">
+            {gameLabel} Complete
+          </p>
+          <p className="text-5xl font-black text-foreground">{result.score}</p>
+          <p className="text-lg font-semibold text-muted-foreground mt-1">points</p>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="bg-card rounded-2xl border shadow-sm p-5 w-full max-w-sm space-y-3">
@@ -72,13 +115,15 @@ export default function ScoreCard({ result, onPlayAgain, onBackToHub }: ScoreCar
 
       {/* Actions */}
       <div className="flex flex-col gap-3 w-full max-w-sm">
-        <button
-          onClick={onPlayAgain}
-          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center gap-2 min-h-[56px] hover:opacity-90 transition-opacity"
-        >
-          <RotateCcw className="w-5 h-5" />
-          Play Again
-        </button>
+        {!isVs && (
+          <button
+            onClick={onPlayAgain}
+            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center gap-2 min-h-[56px] hover:opacity-90 transition-opacity"
+          >
+            <RotateCcw className="w-5 h-5" />
+            Play Again
+          </button>
+        )}
         <button
           onClick={onBackToHub}
           className="w-full py-4 rounded-2xl border-2 border-border font-bold text-lg text-muted-foreground flex items-center justify-center gap-2 min-h-[56px] hover:bg-muted transition-colors"

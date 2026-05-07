@@ -22,9 +22,13 @@ interface RoundState {
 
 interface Props {
   onBack: () => void;
+  /** Pre-determined words for VS mode */
+  vsWords?: string[];
+  /** Called when VS game completes (instead of showing ScoreCard) */
+  onVsComplete?: (result: GameResult) => void;
 }
 
-export default function WordScramble({ onBack }: Props) {
+export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
   const { user } = useAuth();
   const [matchId, setMatchId] = useState<string | null>(null);
   const [words, setWords] = useState<string[]>([]);
@@ -36,8 +40,10 @@ export default function WordScramble({ onBack }: Props) {
   const [result, setResult] = useState<GameResult | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
 
+  const isVs = !!vsWords;
+
   const initGame = useCallback(async () => {
-    const gameWords = pickWords(TOTAL_ROUNDS);
+    const gameWords = vsWords || pickWords(TOTAL_ROUNDS);
     setWords(gameWords);
     setCurrentRound(0);
     setTotalScore(0);
@@ -47,7 +53,8 @@ export default function WordScramble({ onBack }: Props) {
     setFeedback(null);
     initRound(gameWords[0]);
 
-    if (user) {
+    // Only create a DB match for solo mode
+    if (user && !isVs) {
       try {
         const match = await createMatch(user.id, "word_scramble", "solo", {
           words: gameWords,
@@ -58,7 +65,7 @@ export default function WordScramble({ onBack }: Props) {
         // Game works without DB — just skip persistence
       }
     }
-  }, [user]);
+  }, [user, isVs, vsWords]);
 
   useEffect(() => {
     initGame();
@@ -211,12 +218,17 @@ export default function WordScramble({ onBack }: Props) {
             perfectRounds: newPerfect,
             hintsUsed,
           };
-          setResult(finalResult);
 
-          // Save to DB
-          if (matchId && user) {
-            finishMatch(matchId, newTotal).catch(() => {});
-            trackDailyActivity(user.id, TOTAL_ROUNDS, true).catch(() => {});
+          if (onVsComplete) {
+            // VS mode — hand result back to MatchPage
+            onVsComplete(finalResult);
+          } else {
+            setResult(finalResult);
+            // Save to DB (solo only)
+            if (matchId && user) {
+              finishMatch(matchId, newTotal).catch(() => {});
+              trackDailyActivity(user.id, TOTAL_ROUNDS, true).catch(() => {});
+            }
           }
         }
       }, 1200);

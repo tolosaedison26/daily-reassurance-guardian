@@ -27,6 +27,8 @@ import SeniorHome from "./pages/SeniorHome";
 import EmergencyContactsPage from "./pages/EmergencyContactsPage";
 import MedicationsPage from "./pages/MedicationsPage";
 import GamesPage from "./pages/GamesPage";
+import LobbyPage from "./pages/games/LobbyPage";
+import MatchPage from "./pages/games/MatchPage";
 import ServicesPage from "./pages/ServicesPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
 
@@ -88,6 +90,8 @@ const App = () => (
             <Route path="/home" element={<SeniorShell><SeniorHome /></SeniorShell>} />
             <Route path="/medications" element={<SeniorShell><MedicationsPage /></SeniorShell>} />
             <Route path="/games" element={<SeniorShell><GamesPage /></SeniorShell>} />
+            <Route path="/games/lobby" element={<SeniorShell><LobbyPage /></SeniorShell>} />
+            <Route path="/games/m/:id" element={<SeniorShell><MatchPage /></SeniorShell>} />
             <Route path="/contacts" element={<SeniorShell><EmergencyContactsPage /></SeniorShell>} />
             <Route path="/services" element={<SeniorShell><ServicesPage /></SeniorShell>} />
             <Route path="/settings" element={<SeniorShell><AccountSettingsPage /></SeniorShell>} />
