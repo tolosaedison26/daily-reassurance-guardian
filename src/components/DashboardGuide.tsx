@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Users, CheckCircle, MessageSquare, Clock, Pill, LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, CheckCircle, MessageSquare, Clock, Pill, Gamepad2, LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DashboardGuideProps {
   onClose: () => void;
@@ -76,6 +76,20 @@ const steps = [
       "Tap 'Take' or 'Skip' next to each dose to track it",
       "With SMS enabled, you'll receive a daily morning text reminding you to check your schedule",
       "You can pause or delete a medication any time",
+    ],
+  },
+  {
+    icon: Gamepad2,
+    iconBg: "hsl(var(--primary) / 0.12)",
+    iconColor: "hsl(var(--primary))",
+    title: "Play Brain Games",
+    description: "Play fun brain games solo or challenge a friend or family member.",
+    details: [
+      "Go to the Games page from the menu",
+      "Choose Word Scramble or Memory Match",
+      "Play Solo for practice, or tap VS to challenge someone",
+      "Share your invite code so your friend can join",
+      "Your scores and game history are tracked automatically",
     ],
   },
   {

@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Music, ChevronLeft, MessageSquare, ChevronRight, Pill } from "lucide-react";
+import { Music, ChevronLeft, MessageSquare, ChevronRight, Pill, Gamepad2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { triggerSmsWebhook } from "@/lib/supabase-helpers";
@@ -489,6 +489,31 @@ export default function SeniorHome() {
             </button>
           </div>
         )}
+
+        {/* ═══════════════════════════════════════════
+            GAMES WIDGET
+        ═══════════════════════════════════════════ */}
+        <div className="mt-8">
+          <button
+            onClick={() => navigate("/games")}
+            className="w-full flex items-center gap-4 p-5 rounded-2xl bg-card border border-border active:scale-[0.98] transition-transform"
+            style={{ minHeight: "72px", boxShadow: "var(--shadow-card)" }}
+          >
+            <div
+              className="w-14 h-14 min-w-[56px] min-h-[56px] rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "hsl(var(--primary) / 0.1)" }}
+            >
+              <Gamepad2 className="w-6 h-6" style={{ color: "hsl(var(--primary))" }} />
+            </div>
+            <div className="text-left flex-1 min-w-0">
+              <p className="font-bold" style={{ fontSize: "18px" }}>Games</p>
+              <p className="text-muted-foreground truncate" style={{ fontSize: "16px" }}>
+                Play a quick game to stay sharp
+              </p>
+            </div>
+            <ChevronRight className="ml-auto w-5 h-5 text-muted-foreground shrink-0" />
+          </button>
+        </div>
 
         {/* ═══════════════════════════════════════════
             CALM SOUNDS

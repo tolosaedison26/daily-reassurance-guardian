@@ -98,50 +98,27 @@ export async function getMatch(matchId: string): Promise<GamesMatch | null> {
   return data as unknown as GamesMatch | null;
 }
 
-/** Submit VS player result */
+/** Submit VS player result (atomic via SECURITY DEFINER RPC) */
 export async function submitVsResult(
   matchId: string,
-  userId: string,
-  isPlayerA: boolean,
+  _userId: string,
+  _isPlayerA: boolean,
   result: GameResult
 ) {
-  const match = await getMatch(matchId);
-  if (!match) throw new Error("Match not found");
+  const { data, error } = await supabase.rpc("submit_vs_result", {
+    p_match_id: matchId,
+    p_score: result.score,
+    p_result: result as unknown as Record<string, unknown>,
+  });
 
-  const state = match.game_state as unknown as VsGameState;
-  const otherDone = isPlayerA ? state.playerBDone : state.playerADone;
-
-  const updates: Record<string, unknown> = {
-    last_move_at: new Date().toISOString(),
-  };
-
-  if (isPlayerA) {
-    updates.score_a = result.score;
-    updates.game_state = {
-      ...state,
-      playerADone: true,
-      playerAResult: result,
-    };
-  } else {
-    updates.score_b = result.score;
-    updates.game_state = {
-      ...state,
-      playerBDone: true,
-      playerBResult: result,
-    };
+  if (error) {
+    const msg = error.message || "";
+    if (msg.includes("already finished")) return; // Idempotent
+    if (msg.includes("Already submitted")) return; // Idempotent
+    throw error;
   }
 
-  // If both done, mark match as finished
-  if (otherDone) {
-    updates.status = "finished";
-  }
-
-  const { error } = await supabase
-    .from("games_matches")
-    .update(updates as never)
-    .eq("id", matchId);
-
-  if (error) throw error;
+  return data as { finished: boolean };
 }
 
 /** Get active VS matches for a user */
@@ -233,7 +210,7 @@ export async function trackDailyActivity(
     .maybeSingle();
 
   if (existing) {
-    await supabase
+    const { error } = await supabase
       .from("games_daily_activity")
       .update({
         turns_played: (existing as { turns_played: number }).turns_played + turnsPlayed,
@@ -241,8 +218,9 @@ export async function trackDailyActivity(
       } as never)
       .eq("user_id", userId)
       .eq("date", today);
+    if (error) throw error;
   } else {
-    await supabase
+    const { error } = await supabase
       .from("games_daily_activity")
       .insert({
         user_id: userId,
@@ -250,6 +228,7 @@ export async function trackDailyActivity(
         turns_played: turnsPlayed,
         matches_completed: matchCompleted ? 1 : 0,
       } as never);
+    if (error) throw error;
   }
 }
 

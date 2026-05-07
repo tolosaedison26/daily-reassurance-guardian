@@ -115,15 +115,13 @@ export default function ScoreCard({
 
       {/* Actions */}
       <div className="flex flex-col gap-3 w-full max-w-sm">
-        {!isVs && (
-          <button
-            onClick={onPlayAgain}
-            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center gap-2 min-h-[56px] hover:opacity-90 transition-opacity"
-          >
-            <RotateCcw className="w-5 h-5" />
-            Play Again
-          </button>
-        )}
+        <button
+          onClick={onPlayAgain}
+          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center gap-2 min-h-[56px] hover:opacity-90 transition-opacity"
+        >
+          <RotateCcw className="w-5 h-5" />
+          {isVs ? "Rematch" : "Play Again"}
+        </button>
         <button
           onClick={onBackToHub}
           className="w-full py-4 rounded-2xl border-2 border-border font-bold text-lg text-muted-foreground flex items-center justify-center gap-2 min-h-[56px] hover:bg-muted transition-colors"

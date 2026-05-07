@@ -30,6 +30,24 @@ function DisplayCode({ code }: { code: string }) {
     });
   }
 
+  async function handleShare() {
+    const joinUrl = `${window.location.origin}/games/join?code=${code}`;
+    const shareData = {
+      title: "Play a game with me!",
+      text: `Join my game on Daily Guardian! Use code ${code} or tap the link:`,
+      url: joinUrl,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to copy
+      }
+    }
+    handleCopy();
+  }
+
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
@@ -45,16 +63,25 @@ function DisplayCode({ code }: { code: string }) {
           </span>
         ))}
       </div>
-      <button
-        onClick={handleCopy}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-primary hover:bg-primary/10 transition-colors min-h-[44px]"
-      >
-        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-        {copied ? "Copied" : "Copy code"}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleShare}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-opacity min-h-[44px]"
+        >
+          Share code
+        </button>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-primary hover:bg-primary/10 transition-colors min-h-[44px]"
+        >
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
       <p className="text-sm text-muted-foreground text-center max-w-xs">
         Share this code with a friend or family member so they can join your game.
       </p>
+      <p className="text-xs text-muted-foreground/70">Code expires in 48 hours</p>
     </div>
   );
 }
@@ -131,6 +158,7 @@ function EntryCode({
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={i === 0 ? handlePaste : undefined}
             disabled={loading}
+            aria-label={`Invite code character ${i + 1} of 6`}
             className="w-12 h-14 sm:w-14 sm:h-16 rounded-xl bg-card border-2 border-border focus:border-primary text-center text-2xl sm:text-3xl font-black text-foreground outline-none transition-colors"
           />
         ))}

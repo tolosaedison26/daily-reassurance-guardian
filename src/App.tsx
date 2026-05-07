@@ -29,6 +29,7 @@ import MedicationsPage from "./pages/MedicationsPage";
 import GamesPage from "./pages/GamesPage";
 import LobbyPage from "./pages/games/LobbyPage";
 import MatchPage from "./pages/games/MatchPage";
+import GameJoinPage from "./pages/games/GameJoinPage";
 import ServicesPage from "./pages/ServicesPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
 
@@ -85,6 +86,7 @@ const App = () => (
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/games/join" element={<GameJoinPage />} />
 
             {/* Protected: Senior portal (DashboardShell) */}
             <Route path="/home" element={<SeniorShell><SeniorHome /></SeniorShell>} />

@@ -138,8 +138,13 @@ export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
             newHints.add(i);
             // Insert this letter at the correct position in selected
             const newSelected = [...prev.selected];
-            // We need to place it so it ends up at position i
-            newSelected.splice(i, 0, availableIdx);
+            if (i < newSelected.length) {
+              // Position already has a manual letter — replace it
+              newSelected.splice(i, 1, availableIdx);
+            } else {
+              // Position empty — insert at correct spot
+              newSelected.splice(i, 0, availableIdx);
+            }
             return { ...prev, selected: newSelected, hintPositions: newHints };
           });
           setHintsUsed((h) => h + 1);
@@ -300,6 +305,7 @@ export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
               key={i}
               onClick={() => letter && !isHinted ? handleAnswerTap(i) : undefined}
               disabled={!letter || isHinted}
+              aria-label={`Answer position ${i + 1}: ${letter || 'empty'}${isHinted ? ', hinted' : ''}`}
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl text-2xl font-black flex items-center justify-center transition-all ${
                 letter
                   ? isHinted
@@ -327,6 +333,7 @@ export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
               key={i}
               onClick={() => handleLetterTap(i)}
               disabled={isUsed || round.solved}
+              aria-label={`Letter ${letter}${isUsed ? ', already placed' : ''}`}
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl text-2xl font-black flex items-center justify-center transition-all ${
                 isUsed
                   ? "bg-muted/30 text-muted-foreground/30 border-2 border-transparent"

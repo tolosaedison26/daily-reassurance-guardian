@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Users, KeyRound } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +21,15 @@ export default function LobbyPage() {
   const [inviteCode, setInviteCode] = useState<string>("");
   const [joinError, setJoinError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Auto-join if ?join=CODE is present (from shared link / GameJoinPage redirect)
+  const joinCode = searchParams.get("join");
+  useEffect(() => {
+    if (joinCode && user && state === "choose") {
+      setState("joining");
+      handleJoin(joinCode);
+    }
+  }, [joinCode, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCreate() {
     if (!user) return;

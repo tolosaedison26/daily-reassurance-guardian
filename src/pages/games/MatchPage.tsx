@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, ArrowLeft, Clock, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ export default function MatchPage() {
   const [vsState, setVsState] = useState<VsGameState | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [opponentName, setOpponentName] = useState("Opponent");
+  const opponentNameRef = useRef("Opponent");
   const [myResult, setMyResult] = useState<GameResult | null>(null);
   const [pageState, setPageState] = useState<MatchState>("loading");
 
@@ -69,7 +70,10 @@ export default function MatchPage() {
       // Load opponent name
       const opponentId = m.player_a_id === user!.id ? m.player_b_id : m.player_a_id;
       if (opponentId) {
-        getPlayerName(opponentId).then(setOpponentName).catch(() => {});
+        getPlayerName(opponentId).then((name) => {
+          setOpponentName(name);
+          opponentNameRef.current = name;
+        }).catch(() => {});
       }
 
       setPageState(resolveState(m));
@@ -98,7 +102,10 @@ export default function MatchPage() {
         if (updated.player_b_id && user) {
           const opponentId = updated.player_a_id === user.id ? updated.player_b_id : updated.player_a_id;
           if (opponentId) {
-            getPlayerName(opponentId).then(setOpponentName).catch(() => {});
+            getPlayerName(opponentId).then((name) => {
+              setOpponentName(name);
+              opponentNameRef.current = name;
+            }).catch(() => {});
           }
         }
       })
@@ -111,7 +118,7 @@ export default function MatchPage() {
         const reaction = payload.new as { sender_id: string; reaction_id: number };
         if (reaction.sender_id !== user?.id) {
           const r = REACTIONS.find((r) => r.id === reaction.reaction_id);
-          if (r) toast({ title: `${opponentName}: "${r.label}"` });
+          if (r) toast({ title: `${opponentNameRef.current}: "${r.label}"` });
         }
       })
       .subscribe();
@@ -119,7 +126,7 @@ export default function MatchPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [matchId, user, opponentName, toast, resolveState]);
+  }, [matchId, user, toast, resolveState]);
 
   // Handle VS game completion
   async function handleVsComplete(result: GameResult) {

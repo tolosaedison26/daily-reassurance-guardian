@@ -197,6 +197,7 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete }: Props) {
             key={card.id}
             onClick={() => handleCardTap(index)}
             disabled={card.matched || card.flipped || isChecking}
+            aria-label={`Card ${index + 1}: ${card.matched ? card.label + ', matched' : card.flipped ? card.label : 'face down'}`}
             className={`aspect-square rounded-xl text-base sm:text-lg font-bold flex items-center justify-center transition-all duration-300 min-h-[64px] ${
               card.matched
                 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-400 dark:border-emerald-700"
