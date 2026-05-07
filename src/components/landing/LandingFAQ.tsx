@@ -15,6 +15,10 @@ const faqs = [
     a: "Yes. Go to Settings and toggle 'Pause Check-Ins' on. While paused, no SMS is sent and no alerts are triggered. Toggle it off anytime to resume. Perfect for travel or staying with family.",
   },
   {
+    q: "How does medication tracking work?",
+    a: "Add your medications from the Medications tab — pick from common presets or enter your own. Set how often you take each one and the time. Each morning you'll get a text reminding you to check your schedule, and you can tap Take or Skip for each dose right from your dashboard.",
+  },
+  {
     q: "How is this different from a medical alert button?",
     a: "Medical alert buttons only work when you can press them. Daily Guardian is proactive — it checks on you every day, even before anything goes wrong.",
   },

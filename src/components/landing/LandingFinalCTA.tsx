@@ -22,10 +22,10 @@ export default function LandingFinalCTA({ onGetStarted }: LandingFinalCTAProps) 
             className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground"
             style={{ letterSpacing: "-0.03em" }}
           >
-            Stay safe. Stay connected.
+            Stay safe. Stay on track.
           </h2>
           <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-lg mx-auto" style={{ lineHeight: "1.6" }}>
-            Sign up in 2 minutes. Get your daily check-in text. Your emergency contacts get peace of mind.
+            Sign up in 2 minutes. Get daily check-ins and medication reminders. Your emergency contacts get peace of mind.
           </p>
         </div>
 

@@ -63,7 +63,7 @@ export default function LandingFeatures() {
             Everything you need
           </h2>
           <p className="mt-4 text-lg md:text-xl text-muted-foreground" style={{ lineHeight: "1.6" }}>
-            Simple daily safety check-ins. Nothing more, nothing less.
+            Safety check-ins, medication tracking, and more — all in one place.
           </p>
         </div>
 

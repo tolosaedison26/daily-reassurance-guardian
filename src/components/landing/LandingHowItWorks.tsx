@@ -6,14 +6,14 @@ const steps = [
     num: 1,
     icon: UserPlus,
     title: "Create your account",
-    desc: "Sign up with your name, phone, and email. Add up to 3 emergency contacts during onboarding. Set your check-in time from your dashboard.",
+    desc: "Sign up with your name, phone, and email. Add emergency contacts, set your check-in time, and add your medications — all during onboarding.",
     color: "hsl(var(--primary))",
   },
   {
     num: 2,
     icon: MessageSquare,
     title: "Get your daily text",
-    desc: "Each day at your chosen time, you'll receive a text: \"How are you feeling today?\" Reply YES (great), OK (okay), or NO (not well). All three count as a check-in.",
+    desc: "Each morning, you get a medication reminder. At your chosen time, a check-in text asks how you're feeling. Reply YES, OK, or NO — all three count as a check-in.",
     color: "hsl(var(--status-checked))",
   },
   {

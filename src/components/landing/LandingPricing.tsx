@@ -8,6 +8,7 @@ interface LandingPricingProps {
 
 const features = [
   "Daily SMS check-ins",
+  "Medication tracking & daily reminders",
   "Up to 3 emergency contacts",
   "Smart escalation alerts",
   "Mood tracking & weekly reports",
