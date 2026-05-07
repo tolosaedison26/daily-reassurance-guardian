@@ -94,9 +94,12 @@ export default function GamesPage() {
     value: GamesUserPrefs[K]
   ) {
     if (!user) return;
-    setPrefs((prev) => ({ ...prev, [key]: value }));
+    // Always upsert the full prefs object to avoid NOT NULL constraint on first insert
+    const next = { ...prefs, [key]: value } as GamesUserPrefs;
+    setPrefs(next);
     try {
-      await upsertGamePrefs(user.id, { [key]: value });
+      const { user_id: _uid, ...prefsData } = next;
+      await upsertGamePrefs(user.id, prefsData);
     } catch {
       // silently ignore — local state already updated
     }
