@@ -1,15 +1,32 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gamepad2, Type, Grid3X3, Trophy, Loader2, Swords, Trash2, Calendar, Flame, CheckCircle2 } from "lucide-react";
+import {
+  Gamepad2, Type, Grid3X3, Trophy, Loader2, Swords, Trash2,
+  Calendar, Flame, CheckCircle2, Settings2, X,
+} from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getGameStats, getRecentMatches, getActiveVsMatches, deleteMatch,
   getTodayDailyChallenge, saveDailyChallenge, getDailyStreak, trackDailyActivity,
+  getGamePrefs, upsertGamePrefs,
 } from "@/lib/games/client";
 import { seedDailyHardWords, buildDailyCardDeck } from "@/lib/games/helpers";
-import type { GameType, GamesMatch, VsGameState, GameResult, MemoryCard } from "@/types/games";
+import type { GameType, GamesMatch, VsGameState, GameResult, MemoryCard, GamesUserPrefs } from "@/types/games";
 import WordScramble from "@/components/games/WordScramble";
 import MemoryMatch from "@/components/games/MemoryMatch";
+
+const DEFAULT_PREFS: GamesUserPrefs = {
+  user_id: "",
+  big_text: false,
+  high_contrast: false,
+  dyslexia_font: false,
+  reduced_motion: false,
+  sms_turn_notify: false,
+  quiet_hours_start: "22:00",
+  quiet_hours_end: "08:00",
+  grid_size: "standard",
+};
 
 type View = "hub" | "word_scramble" | "memory_match" | "daily_word_scramble" | "daily_memory_match";
 
@@ -17,6 +34,8 @@ export default function GamesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [view, setView] = useState<View>("hub");
+  const [prefs, setPrefs] = useState<GamesUserPrefs>(DEFAULT_PREFS);
+  const [showSettings, setShowSettings] = useState(false);
   const [stats, setStats] = useState<{
     word_scramble: { played: number; totalScore: number; bestScore: number };
     memory_match: { played: number; totalScore: number; bestScore: number };
@@ -62,6 +81,27 @@ export default function GamesPage() {
     loadStats();
   }, [loadStats]);
 
+  // Load accessibility prefs separately
+  useEffect(() => {
+    if (!user) return;
+    getGamePrefs(user.id)
+      .then((p) => { if (p) setPrefs(p); })
+      .catch(() => {});
+  }, [user]);
+
+  async function handlePrefChange<K extends keyof Omit<GamesUserPrefs, "user_id">>(
+    key: K,
+    value: GamesUserPrefs[K]
+  ) {
+    if (!user) return;
+    setPrefs((prev) => ({ ...prev, [key]: value }));
+    try {
+      await upsertGamePrefs(user.id, { [key]: value });
+    } catch {
+      // silently ignore — local state already updated
+    }
+  }
+
   function handleBack() {
     setView("hub");
     loadStats();
@@ -73,7 +113,7 @@ export default function GamesPage() {
       setActiveVs((prev) => prev.filter((g) => g.id !== id));
       setRecentGames((prev) => prev.filter((g) => g.id !== id));
     } catch {
-      // silently ignore — row stays if delete fails
+      // silently ignore
     }
   }
 
@@ -92,7 +132,7 @@ export default function GamesPage() {
   async function handleDailyComplete(gameType: GameType, result: GameResult) {
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
-    // Optimistic update so score appears immediately
+    // Optimistic update — show score immediately
     const optimistic = { id: "", score_a: result.score } as GamesMatch;
     if (gameType === "word_scramble") setDailyWord(optimistic);
     else setDailyMemory(optimistic);
@@ -101,16 +141,18 @@ export default function GamesPage() {
       await saveDailyChallenge(user.id, gameType, today, result.score);
       trackDailyActivity(user.id, result.rounds || result.moves || 1, true).catch(() => {});
     } catch {
-      // non-critical — optimistic update already shown
+      // non-critical — optimistic already shown
     }
     loadStats();
   }
+
+  // ── Game views ───────────────────────────────────────────────────────────────
 
   if (view === "word_scramble") {
     return (
       <div className="flex flex-col bg-background max-w-2xl mx-auto w-full">
         <div className="flex-1 flex flex-col px-4 sm:px-6 pt-4 sm:pt-6 pb-6">
-          <WordScramble onBack={handleBack} />
+          <WordScramble onBack={handleBack} bigText={prefs.big_text} />
         </div>
       </div>
     );
@@ -120,7 +162,7 @@ export default function GamesPage() {
     return (
       <div className="flex flex-col bg-background max-w-2xl mx-auto w-full">
         <div className="flex-1 flex flex-col px-4 sm:px-6 pt-4 sm:pt-6 pb-6">
-          <MemoryMatch onBack={handleBack} />
+          <MemoryMatch onBack={handleBack} bigText={prefs.big_text} gridSize={prefs.grid_size} />
         </div>
       </div>
     );
@@ -135,6 +177,7 @@ export default function GamesPage() {
             vsWords={dailyGameWords}
             onVsComplete={(result) => handleDailyComplete("word_scramble", result)}
             hideHint
+            bigText={prefs.big_text}
           />
         </div>
       </div>
@@ -150,53 +193,96 @@ export default function GamesPage() {
             vsCards={dailyGameCards}
             onVsComplete={(result) => handleDailyComplete("memory_match", result)}
             flipDelay={800}
+            bigText={prefs.big_text}
           />
         </div>
       </div>
     );
   }
 
+  // ── Hub view ──────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col bg-background max-w-2xl mx-auto w-full">
-      <div className="flex-1 flex flex-col px-4 sm:px-6 pt-4 sm:pt-6 pb-6 gap-5">
+      <div className="flex-1 flex flex-col px-4 sm:px-6 pt-4 sm:pt-6 pb-8 gap-5">
+
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Gamepad2 className="w-6 h-6 text-primary" />
-            <h1 className="text-2xl font-black text-foreground">Games</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Gamepad2 className="w-6 h-6 text-primary" />
+              <h1 className="text-2xl font-black text-foreground">Games</h1>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Play a quick game to keep your mind sharp.
+            </p>
           </div>
-          <p className="text-base text-muted-foreground">
-            Play a quick game to keep your mind sharp.
-          </p>
+          <button
+            onClick={() => setShowSettings((v) => !v)}
+            aria-label="Accessibility settings"
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors mt-0.5 shrink-0 ${
+              showSettings
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <Settings2 className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* Accessibility settings panel */}
+        {showSettings && (
+          <div className="rounded-2xl bg-card border shadow-sm p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Accessibility
+              </p>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+                aria-label="Close settings"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-base font-semibold text-foreground">Large Text</p>
+                <p className="text-xs text-muted-foreground">Bigger letters in games</p>
+              </div>
+              <Switch
+                checked={prefs.big_text}
+                onCheckedChange={(v) => handlePrefChange("big_text", v)}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-base font-semibold text-foreground">Easier Memory Grid</p>
+                <p className="text-xs text-muted-foreground">6 pairs instead of 8 (solo only)</p>
+              </div>
+              <Switch
+                checked={prefs.grid_size === "easy"}
+                onCheckedChange={(v) => handlePrefChange("grid_size", v ? "easy" : "standard")}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Active VS matches */}
         {activeVs.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                Active Games
-              </p>
-              {activeVs.length > 3 && (
-                <button
-                  onClick={() => setShowAllActive((v) => !v)}
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  {showAllActive ? "Show less" : `Show all ${activeVs.length}`}
-                </button>
-              )}
-            </div>
+            <SectionLabel>Active Games</SectionLabel>
             <div className="space-y-2">
               {(showAllActive ? activeVs : activeVs.slice(0, 3)).map((game) => (
                 <ActiveVsRow key={game.id} game={game} userId={user?.id || ""} onRemove={handleRemove} />
               ))}
             </div>
-            {!showAllActive && activeVs.length > 3 && (
+            {activeVs.length > 3 && (
               <button
-                onClick={() => setShowAllActive(true)}
+                onClick={() => setShowAllActive((v) => !v)}
                 className="mt-2 w-full py-2.5 rounded-xl border border-dashed border-border text-sm font-bold text-muted-foreground hover:bg-muted transition-colors"
               >
-                +{activeVs.length - 3} more active {activeVs.length - 3 === 1 ? "game" : "games"}
+                {showAllActive ? "Show less" : `+${activeVs.length - 3} more active ${activeVs.length - 3 === 1 ? "game" : "games"}`}
               </button>
             )}
           </div>
@@ -207,9 +293,8 @@ export default function GamesPage() {
           <GameCard
             title="Word Scramble"
             description="Unscramble letters to find the hidden word. 5 rounds per game."
-            icon={<Type className="w-8 h-8" />}
-            color="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300"
-            iconBg="bg-violet-200 dark:bg-violet-800/50"
+            icon={<Type className="w-7 h-7 text-white" />}
+            gradient="from-violet-500 to-purple-600"
             stats={stats?.word_scramble}
             loading={loading}
             onSolo={() => setView("word_scramble")}
@@ -217,10 +302,9 @@ export default function GamesPage() {
           />
           <GameCard
             title="Memory Match"
-            description="Flip cards to find matching pairs. Test your memory with 8 pairs."
-            icon={<Grid3X3 className="w-8 h-8" />}
-            color="bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300"
-            iconBg="bg-sky-200 dark:bg-sky-800/50"
+            description="Flip cards to find matching pairs. Test your memory."
+            icon={<Grid3X3 className="w-7 h-7 text-white" />}
+            gradient="from-sky-500 to-blue-600"
             stats={stats?.memory_match}
             loading={loading}
             onSolo={() => setView("memory_match")}
@@ -228,33 +312,21 @@ export default function GamesPage() {
           />
         </div>
 
-        {/* Recent games */}
+        {/* Recent game history */}
         {recentGames.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                Game History
-              </p>
-              {recentGames.length > 5 && (
-                <button
-                  onClick={() => setShowAllRecent((v) => !v)}
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  {showAllRecent ? "Show less" : `Show all ${recentGames.length}`}
-                </button>
-              )}
-            </div>
+            <SectionLabel>Game History</SectionLabel>
             <div className="space-y-2">
               {(showAllRecent ? recentGames : recentGames.slice(0, 5)).map((game) => (
                 <RecentGameRow key={game.id} game={game} userId={user?.id || ""} onRemove={handleRemove} />
               ))}
             </div>
-            {!showAllRecent && recentGames.length > 5 && (
+            {recentGames.length > 5 && (
               <button
-                onClick={() => setShowAllRecent(true)}
+                onClick={() => setShowAllRecent((v) => !v)}
                 className="mt-2 w-full py-2.5 rounded-xl border border-dashed border-border text-sm font-bold text-muted-foreground hover:bg-muted transition-colors"
               >
-                Show {recentGames.length - 5} more
+                {showAllRecent ? "Show less" : `Show ${recentGames.length - 5} more`}
               </button>
             )}
           </div>
@@ -262,7 +334,6 @@ export default function GamesPage() {
 
         {/* Daily Challenge */}
         <div className="rounded-2xl border-2 border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 overflow-hidden">
-          {/* Card header */}
           <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-0.5">
@@ -285,7 +356,6 @@ export default function GamesPage() {
               </div>
             )}
           </div>
-          {/* Game rows */}
           <div className="border-t border-amber-200 dark:border-amber-700">
             <DailyChallengeRow
               title="Word Scramble"
@@ -310,6 +380,83 @@ export default function GamesPage() {
           </div>
         </div>
 
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">
+      {children}
+    </p>
+  );
+}
+
+function GameCard({
+  title,
+  description,
+  icon,
+  gradient,
+  stats,
+  loading,
+  onSolo,
+  onVs,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  gradient: string;
+  stats?: { played: number; totalScore: number; bestScore: number };
+  loading: boolean;
+  onSolo: () => void;
+  onVs: () => void;
+}) {
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-sm border border-white/10">
+      {/* Colored header */}
+      <div className={`relative bg-gradient-to-br ${gradient} p-5 overflow-hidden`}>
+        {/* Decorative circles */}
+        <div className="absolute -top-5 -right-5 w-24 h-24 rounded-full bg-white/10" />
+        <div className="absolute top-8 -right-2 w-12 h-12 rounded-full bg-white/5" />
+        <div className="relative">
+          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+            {icon}
+          </div>
+          <p className="text-xl font-black text-white">{title}</p>
+          <p className="text-sm text-white/75 mt-0.5 leading-snug">{description}</p>
+          {loading ? (
+            <div className="mt-3">
+              <Loader2 className="w-4 h-4 animate-spin text-white/50" />
+            </div>
+          ) : stats && stats.played > 0 ? (
+            <div className="flex items-center gap-3 mt-3 text-xs font-bold text-white/70">
+              <span>{stats.played} played</span>
+              <span className="flex items-center gap-1">
+                <Trophy className="w-3 h-3" />
+                Best: {stats.bestScore} pts
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {/* Action buttons */}
+      <div className="grid grid-cols-2 bg-card divide-x divide-border">
+        <button
+          onClick={onSolo}
+          className="py-4 text-sm font-bold text-center text-foreground hover:bg-muted transition-colors min-h-[52px]"
+        >
+          Play Solo
+        </button>
+        <button
+          onClick={onVs}
+          className="py-4 text-sm font-bold text-center hover:bg-muted transition-colors min-h-[52px] flex items-center justify-center gap-1.5 text-primary"
+        >
+          <Swords className="w-4 h-4" />
+          Play VS
+        </button>
       </div>
     </div>
   );
@@ -363,67 +510,15 @@ function DailyChallengeRow({
   );
 }
 
-function GameCard({
-  title,
-  description,
-  icon,
-  color,
-  iconBg,
-  stats,
-  loading,
-  onSolo,
-  onVs,
+function ActiveVsRow({
+  game,
+  userId,
+  onRemove,
 }: {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-  iconBg: string;
-  stats?: { played: number; totalScore: number; bestScore: number };
-  loading: boolean;
-  onSolo: () => void;
-  onVs: () => void;
+  game: GamesMatch;
+  userId: string;
+  onRemove: (id: string) => void;
 }) {
-  return (
-    <div className={`p-5 rounded-2xl border shadow-sm ${color}`}>
-      <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 ${iconBg}`}>
-        {icon}
-      </div>
-      <p className="text-lg font-black">{title}</p>
-      <p className="text-sm opacity-80 mt-1">{description}</p>
-      {loading ? (
-        <div className="mt-3">
-          <Loader2 className="w-4 h-4 animate-spin opacity-50" />
-        </div>
-      ) : stats && stats.played > 0 ? (
-        <div className="mt-3 flex items-center gap-3 text-xs font-bold opacity-70">
-          <span>{stats.played} played</span>
-          <span className="flex items-center gap-1">
-            <Trophy className="w-3 h-3" /> Best: {stats.bestScore}
-          </span>
-        </div>
-      ) : null}
-      {/* Play buttons */}
-      <div className="flex gap-2 mt-4">
-        <button
-          onClick={onSolo}
-          className="flex-1 py-3 rounded-xl bg-white/50 dark:bg-white/10 font-bold text-sm hover:bg-white/70 dark:hover:bg-white/20 transition-colors min-h-[48px]"
-        >
-          Play Solo
-        </button>
-        <button
-          onClick={onVs}
-          className="flex-1 py-3 rounded-xl bg-white/50 dark:bg-white/10 font-bold text-sm hover:bg-white/70 dark:hover:bg-white/20 transition-colors min-h-[48px] flex items-center justify-center gap-1.5"
-        >
-          <Swords className="w-4 h-4" />
-          VS
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ActiveVsRow({ game, userId, onRemove }: { game: GamesMatch; userId: string; onRemove: (id: string) => void }) {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const gameLabel = game.game_type === "word_scramble" ? "Word Scramble" : "Memory Match";
@@ -492,7 +587,15 @@ function ActiveVsRow({ game, userId, onRemove }: { game: GamesMatch; userId: str
   );
 }
 
-function RecentGameRow({ game, userId, onRemove }: { game: GamesMatch; userId: string; onRemove: (id: string) => void }) {
+function RecentGameRow({
+  game,
+  userId,
+  onRemove,
+}: {
+  game: GamesMatch;
+  userId: string;
+  onRemove: (id: string) => void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const gameLabel = game.game_type === "word_scramble" ? "Word Scramble" : "Memory Match";
   const modeLabel = game.mode === "vs" ? " VS" : game.mode === "daily_challenge" ? " Daily" : "";
@@ -525,20 +628,26 @@ function RecentGameRow({ game, userId, onRemove }: { game: GamesMatch; userId: s
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 flex items-center justify-between px-4 py-3 rounded-xl bg-card border">
-        <div className="flex items-center gap-3">
-          {game.game_type === "word_scramble" ? (
-            <Type className="w-5 h-5 text-violet-500" />
-          ) : (
-            <Grid3X3 className="w-5 h-5 text-sky-500" />
-          )}
-          <div>
-            <p className="text-sm font-bold text-foreground">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+            game.game_type === "word_scramble"
+              ? "bg-violet-100 dark:bg-violet-900/30"
+              : "bg-sky-100 dark:bg-sky-900/30"
+          }`}>
+            {game.game_type === "word_scramble" ? (
+              <Type className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+            ) : (
+              <Grid3X3 className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground truncate">
               {gameLabel}{modeLabel}
             </p>
             <p className="text-xs text-muted-foreground">{timeAgo}</p>
           </div>
         </div>
-        <p className="text-lg font-black text-foreground">{myScore} pts</p>
+        <p className="text-lg font-black text-foreground shrink-0 ml-2">{myScore} pts</p>
       </div>
       <button
         onClick={() => setConfirming(true)}

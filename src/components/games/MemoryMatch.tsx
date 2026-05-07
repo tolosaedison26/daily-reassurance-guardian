@@ -12,20 +12,25 @@ const DEFAULT_FLIP_BACK_DELAY = 1500;
 
 interface Props {
   onBack: () => void;
-  /** Pre-determined cards for VS mode */
+  /** Pre-determined cards for VS / daily challenge mode */
   vsCards?: MemoryCard[];
   /** Called when VS game completes (instead of showing ScoreCard) */
   onVsComplete?: (result: GameResult) => void;
   /** Override flip-back delay in ms (default 1500; daily challenge uses shorter) */
   flipDelay?: number;
+  /** Use larger text for accessibility */
+  bigText?: boolean;
+  /** Grid size: standard = 4×4 (8 pairs), easy = 3×4 (6 pairs). Ignored in VS mode. */
+  gridSize?: "standard" | "easy";
 }
 
-export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }: Props) {
+export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay, bigText, gridSize }: Props) {
   const { user } = useAuth();
   const vsCardsRef = useRef(vsCards);
+  const gridSizeRef = useRef(gridSize ?? "standard");
   const [matchId, setMatchId] = useState<string | null>(null);
   const [cards, setCards] = useState<MemoryCard[]>([]);
-  const [flipped, setFlipped] = useState<number[]>([]); // indices of currently flipped cards (max 2)
+  const [flipped, setFlipped] = useState<number[]>([]); // indices of currently flipped (max 2)
   const [score, setScore] = useState(0);
   const [consecutiveMatches, setConsecutiveMatches] = useState(0);
   const [moves, setMoves] = useState(0);
@@ -37,11 +42,16 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isVs = !!vsCardsRef.current;
+  const isEasy = !isVs && gridSizeRef.current === "easy";
 
   const initGame = useCallback(async () => {
     if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
-    const pairs = 8;
-    const deck = vsCardsRef.current || buildCardDeck(pairs);
+    const pairs = vsCardsRef.current
+      ? vsCardsRef.current.length / 2
+      : gridSizeRef.current === "easy"
+      ? 6
+      : 8;
+    const deck = vsCardsRef.current || buildCardDeck(pairs as 8 | 6);
     setCards(deck);
     setFlipped([]);
     setScore(0);
@@ -58,7 +68,7 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
       try {
         const match = await createMatch(user.id, "memory_match", "solo", {
           totalPairs: pairs,
-          gridSize: "standard",
+          gridSize: gridSizeRef.current,
         });
         setMatchId(match.id);
       } catch {
@@ -80,7 +90,6 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
     if (card.matched || card.flipped) return;
     if (flipped.length >= 2) return;
 
-    // Flip the card
     const newCards = [...cards];
     newCards[index] = { ...newCards[index], flipped: true };
     setCards(newCards);
@@ -117,7 +126,6 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
           setLastMatchedKey(cardA.pairKey);
           setIsChecking(false);
 
-          // Check game over
           if (newPairsMatched === totalPairs) {
             const finalResult: GameResult = {
               gameType: "memory_match",
@@ -165,8 +173,12 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
     );
   }
 
+  const gridColsClass = isEasy ? "grid-cols-3" : "grid-cols-4";
+  const cardTextClass = bigText ? "text-lg sm:text-xl font-bold" : "text-base sm:text-lg font-bold";
+  const cardMinH = bigText ? "min-h-[76px]" : "min-h-[64px]";
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
@@ -184,6 +196,16 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
         </div>
       </div>
 
+      {/* Pairs progress bar */}
+      <div className="space-y-1.5 max-w-md mx-auto w-full">
+        <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+          <div
+            className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${totalPairs > 0 ? (pairsMatched / totalPairs) * 100 : 0}%` }}
+          />
+        </div>
+      </div>
+
       {/* Streak indicator */}
       {consecutiveMatches > 1 && (
         <div className="text-center">
@@ -194,14 +216,16 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }
       )}
 
       {/* Card grid */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-md mx-auto w-full">
+      <div className={`grid ${gridColsClass} gap-2 sm:gap-3 max-w-md mx-auto w-full`}>
         {cards.map((card, index) => (
           <button
             key={card.id}
             onClick={() => handleCardTap(index)}
             disabled={card.matched || card.flipped || isChecking}
-            aria-label={`Card ${index + 1}: ${card.matched ? card.label + ', matched' : card.flipped ? card.label : 'face down'}`}
-            className={`aspect-square rounded-xl text-base sm:text-lg font-bold flex items-center justify-center transition-all duration-300 min-h-[64px] ${
+            aria-label={`Card ${index + 1}: ${
+              card.matched ? card.label + ", matched" : card.flipped ? card.label : "face down"
+            }`}
+            className={`aspect-square rounded-xl ${cardTextClass} flex items-center justify-center transition-all duration-300 ${cardMinH} ${
               card.matched
                 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-400 dark:border-emerald-700"
                 : card.flipped

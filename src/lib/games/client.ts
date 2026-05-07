@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { GameType, GameMode, GamesMatch, GamesInvitation, VsGameState, GameResult } from "@/types/games";
+import type { GameType, GameMode, GamesMatch, GamesInvitation, VsGameState, GameResult, GamesUserPrefs } from "@/types/games";
 import { generateInviteCode, pickWords, shuffle } from "./helpers";
 import { CARD_SETS } from "@/data/game-cards";
 
@@ -356,6 +356,28 @@ export async function deleteMatch(matchId: string) {
     .from("games_matches")
     .delete()
     .eq("id", matchId);
+  if (error) throw error;
+}
+
+/** Get game accessibility prefs for a user */
+export async function getGamePrefs(userId: string): Promise<GamesUserPrefs | null> {
+  const { data, error } = await supabase
+    .from("games_user_prefs")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as unknown as GamesUserPrefs | null;
+}
+
+/** Upsert game accessibility prefs (creates row if not exists) */
+export async function upsertGamePrefs(
+  userId: string,
+  prefs: Partial<Omit<GamesUserPrefs, "user_id">>
+): Promise<void> {
+  const { error } = await supabase
+    .from("games_user_prefs")
+    .upsert({ user_id: userId, ...prefs } as never, { onConflict: "user_id" });
   if (error) throw error;
 }
 

@@ -22,15 +22,17 @@ interface RoundState {
 
 interface Props {
   onBack: () => void;
-  /** Pre-determined words for VS mode */
+  /** Pre-determined words for VS / daily challenge mode */
   vsWords?: string[];
   /** Called when VS game completes (instead of showing ScoreCard) */
   onVsComplete?: (result: GameResult) => void;
   /** Hide the hint button (daily challenge hard mode) */
   hideHint?: boolean;
+  /** Use larger text for accessibility */
+  bigText?: boolean;
 }
 
-export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }: Props) {
+export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint, bigText }: Props) {
   const { user } = useAuth();
   const vsWordsRef = useRef(vsWords);
   const [matchId, setMatchId] = useState<string | null>(null);
@@ -44,6 +46,11 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
 
   const isVs = !!vsWordsRef.current;
+
+  // Tile size classes based on bigText preference
+  const tileSize = bigText
+    ? "w-16 h-16 sm:w-20 sm:h-20 text-3xl font-black"
+    : "w-14 h-14 sm:w-16 sm:h-16 text-2xl font-black";
 
   const initGame = useCallback(async () => {
     const gameWords = vsWordsRef.current || pickWords(TOTAL_ROUNDS);
@@ -99,14 +106,11 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
 
   function handleAnswerTap(position: number) {
     if (!round || round.solved || feedback === "correct") return;
-    // Don't allow removing hinted letters
     if (round.hintPositions.has(position)) return;
 
     setRound((prev) => {
       if (!prev) return prev;
       const newSelected = [...prev.selected];
-      // Find which selected index corresponds to this answer position
-      // Position in answer = index in selected array (accounting for hints)
       let answerPos = 0;
       let removeIdx = -1;
       for (let i = 0; i < newSelected.length; i++) {
@@ -126,10 +130,8 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
   function handleHint() {
     if (!round || round.solved) return;
     const word = round.word;
-    // Find next position that isn't already hinted
     for (let i = 0; i < word.length; i++) {
       if (!round.hintPositions.has(i)) {
-        // Find the scrambled index that has this letter and isn't selected
         const letter = word[i];
         const availableIdx = round.scrambled.findIndex(
           (l, idx) => l === letter && !round.selected.includes(idx)
@@ -139,13 +141,10 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
             if (!prev) return prev;
             const newHints = new Set(prev.hintPositions);
             newHints.add(i);
-            // Insert this letter at the correct position in selected
             const newSelected = [...prev.selected];
             if (i < newSelected.length) {
-              // Position already has a manual letter — replace it
               newSelected.splice(i, 1, availableIdx);
             } else {
-              // Position empty — insert at correct spot
               newSelected.splice(i, 0, availableIdx);
             }
             return { ...prev, selected: newSelected, hintPositions: newHints };
@@ -161,16 +160,13 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
     if (!round || round.solved) return;
     setRound((prev) => {
       if (!prev) return prev;
-      // Keep hinted letters, clear the rest
       if (prev.hintPositions.size === 0) {
         return { ...prev, selected: [] };
       }
-      // Rebuild selected to only include hinted positions
       const newSelected: number[] = [];
       const word = prev.word;
       for (let i = 0; i < word.length; i++) {
         if (prev.hintPositions.has(i)) {
-          // Find the scrambled index for this hinted letter
           const letter = word[i];
           const idx = prev.scrambled.findIndex(
             (l, si) => l === letter && !newSelected.includes(si)
@@ -194,12 +190,11 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
       const newTotal = totalScore + roundScore;
       const newPerfect = newAttempts === 1 ? perfectRounds + 1 : perfectRounds;
 
-      setRound((prev) => prev ? { ...prev, solved: true, attempts: newAttempts, score: roundScore } : prev);
+      setRound((prev) => (prev ? { ...prev, solved: true, attempts: newAttempts, score: roundScore } : prev));
       setTotalScore(newTotal);
       setPerfectRounds(newPerfect);
       setFeedback("correct");
 
-      // Record move
       if (matchId && user) {
         recordMove(matchId, user.id, currentRound + 1, {
           word: round.word,
@@ -211,14 +206,12 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
         }).catch(() => {});
       }
 
-      // Advance after delay
       setTimeout(() => {
         const nextRound = currentRound + 1;
         if (nextRound < TOTAL_ROUNDS) {
           setCurrentRound(nextRound);
           initRound(words[nextRound]);
         } else {
-          // Game over
           const finalResult: GameResult = {
             gameType: "word_scramble",
             score: newTotal,
@@ -228,11 +221,9 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
           };
 
           if (onVsComplete) {
-            // VS mode — hand result back to MatchPage
             onVsComplete(finalResult);
           } else {
             setResult(finalResult);
-            // Save to DB (solo only)
             if (matchId && user) {
               finishMatch(matchId, newTotal).catch(() => {});
               trackDailyActivity(user.id, TOTAL_ROUNDS, true).catch(() => {});
@@ -241,13 +232,12 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
         }
       }, 1200);
     } else {
-      setRound((prev) => prev ? { ...prev, attempts: newAttempts } : prev);
+      setRound((prev) => (prev ? { ...prev, attempts: newAttempts } : prev));
       setFeedback("wrong");
       setTimeout(() => setFeedback(null), 800);
     }
   }
 
-  // Build the answer display
   function getAnswerLetters(): (string | null)[] {
     if (!round) return [];
     const slots: (string | null)[] = Array(round.word.length).fill(null);
@@ -293,10 +283,30 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
         </div>
       </div>
 
+      {/* Round progress dots */}
+      <div className="flex justify-center items-center gap-2">
+        {Array.from({ length: TOTAL_ROUNDS }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              i < currentRound
+                ? "w-6 bg-emerald-500"
+                : i === currentRound
+                ? "w-9 bg-primary"
+                : "w-6 bg-border"
+            }`}
+          />
+        ))}
+      </div>
+
       {/* Instructions */}
       <div className="text-center">
-        <p className="text-lg font-bold text-foreground">Unscramble the word</p>
-        <p className="text-sm text-muted-foreground mt-1">Tap letters in order to spell the word</p>
+        <p className={`font-bold text-foreground ${bigText ? "text-xl" : "text-lg"}`}>
+          Unscramble the word
+        </p>
+        <p className={`text-muted-foreground mt-1 ${bigText ? "text-base" : "text-sm"}`}>
+          Tap letters in order to spell the word
+        </p>
       </div>
 
       {/* Answer slots */}
@@ -306,10 +316,10 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
           return (
             <button
               key={i}
-              onClick={() => letter && !isHinted ? handleAnswerTap(i) : undefined}
+              onClick={() => (letter && !isHinted ? handleAnswerTap(i) : undefined)}
               disabled={!letter || isHinted}
-              aria-label={`Answer position ${i + 1}: ${letter || 'empty'}${isHinted ? ', hinted' : ''}`}
-              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl text-2xl font-black flex items-center justify-center transition-all ${
+              aria-label={`Answer position ${i + 1}: ${letter || "empty"}${isHinted ? ", hinted" : ""}`}
+              className={`${tileSize} rounded-xl flex items-center justify-center transition-all ${
                 letter
                   ? isHinted
                     ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700"
@@ -336,8 +346,8 @@ export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }
               key={i}
               onClick={() => handleLetterTap(i)}
               disabled={isUsed || round.solved}
-              aria-label={`Letter ${letter}${isUsed ? ', already placed' : ''}`}
-              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl text-2xl font-black flex items-center justify-center transition-all ${
+              aria-label={`Letter ${letter}${isUsed ? ", already placed" : ""}`}
+              className={`${tileSize} rounded-xl flex items-center justify-center transition-all ${
                 isUsed
                   ? "bg-muted/30 text-muted-foreground/30 border-2 border-transparent"
                   : "bg-card text-foreground border-2 border-border shadow-sm hover:border-primary hover:shadow-md active:scale-95"
