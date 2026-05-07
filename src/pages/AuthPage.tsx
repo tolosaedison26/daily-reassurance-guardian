@@ -36,6 +36,8 @@ export default function AuthPage() {
   useEffect(() => {
     // Don't redirect while signup save is still running
     if (signupInProgress) return;
+    // Anonymous (guest) users clicking "Create Account" land here — let them see the form
+    if (user?.is_anonymous) return;
     if (!authLoading && user && profile) {
       const defaultRoute = profile.role === "admin" ? "/admin" : "/home";
       const params = new URLSearchParams(location.search);
@@ -155,7 +157,7 @@ export default function AuthPage() {
             {mode === "login" ? "Sign in to continue" : mode === "signup" ? "Join Daily Guardian today" : "Enter your email to receive a reset link"}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             {mode === "signup" && (
               <div>
                 <Label htmlFor="fullName" className="text-base font-bold">Full Name</Label>
@@ -179,6 +181,7 @@ export default function AuthPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
+                autoComplete="off"
                 className="mt-1 h-12 text-base rounded-xl"
               />
             </div>
@@ -212,6 +215,7 @@ export default function AuthPage() {
                   placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
                   required
                   minLength={6}
+                  autoComplete="new-password"
                   className="mt-1 h-12 text-base rounded-xl"
                 />
               </div>

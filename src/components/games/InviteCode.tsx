@@ -20,39 +20,79 @@ export default function InviteCode(props: Props) {
   return <EntryCode onSubmit={props.onSubmit} error={props.error} loading={props.loading} />;
 }
 
-function DisplayCode({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
+function fallbackCopy(text: string): boolean {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
-  function handleCopy() {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Clipboard API failed — try fallback
+  }
+  return fallbackCopy(text);
+}
+
+function DisplayCode({ code }: { code: string }) {
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const joinUrl = `${window.location.origin}/games/join?code=${code}`;
+
+  async function handleCopyCode() {
+    const ok = await copyText(code);
+    if (ok) {
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    }
+  }
+
+  async function handleCopyLink() {
+    const ok = await copyText(joinUrl);
+    if (ok) {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   }
 
   async function handleShare() {
-    const joinUrl = `${window.location.origin}/games/join?code=${code}`;
-    const shareData = {
-      title: "Play a game with me!",
-      text: `Join my game on Daily Guardian! Use code ${code} or tap the link:`,
-      url: joinUrl,
-    };
     if (navigator.share) {
       try {
-        await navigator.share(shareData);
+        await navigator.share({
+          title: "Play a game with me!",
+          text: `Join my game on Daily Guardian! Use code ${code} or tap the link:`,
+          url: joinUrl,
+        });
         return;
-      } catch {
-        // User cancelled or share failed — fall through to copy
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
       }
     }
-    handleCopy();
+    // Fallback: copy link
+    handleCopyLink();
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-4 w-full">
       <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
         Your invite code
       </p>
+
+      {/* Code boxes */}
       <div className="flex items-center gap-2">
         {code.split("").map((char, i) => (
           <span
@@ -62,26 +102,46 @@ function DisplayCode({ code }: { code: string }) {
             {char}
           </span>
         ))}
-      </div>
-      <div className="flex items-center gap-2">
         <button
-          onClick={handleShare}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-opacity min-h-[44px]"
+          onClick={handleCopyCode}
+          aria-label="Copy invite code"
+          className="ml-1 flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted transition-colors min-h-[44px]"
         >
-          Share code
-        </button>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-primary hover:bg-primary/10 transition-colors min-h-[44px]"
-        >
-          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-          {copied ? "Copied" : "Copy"}
+          {codeCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+          {codeCopied ? "Copied" : "Copy"}
         </button>
       </div>
-      <p className="text-sm text-muted-foreground text-center max-w-xs">
-        Share this code with a friend or family member so they can join your game.
-      </p>
-      <p className="text-xs text-muted-foreground/70">Code expires in 48 hours</p>
+
+      {/* Shareable link — visible to user */}
+      <div className="w-full max-w-sm">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2 text-center">
+          Or share this link
+        </p>
+        <div className="flex items-center gap-2 w-full bg-muted/60 border border-border rounded-xl px-3 py-2.5">
+          <span className="flex-1 text-sm text-muted-foreground font-medium truncate select-all">
+            {joinUrl}
+          </span>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={handleCopyLink}
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-base hover:opacity-90 transition-opacity min-h-[52px]"
+          >
+            {linkCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+            {linkCopied ? "Link Copied!" : "Copy Link"}
+          </button>
+          {navigator.share !== undefined && (
+            <button
+              onClick={handleShare}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-border font-bold text-base text-foreground hover:bg-muted transition-colors min-h-[52px]"
+            >
+              Share
+            </button>
+          )}
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground/70">Link expires in 48 hours</p>
     </div>
   );
 }

@@ -278,6 +278,87 @@ export async function getGameStats(userId: string) {
   return stats;
 }
 
+/** Check if user already played today's daily challenge */
+export async function getTodayDailyChallenge(
+  userId: string,
+  gameType: GameType,
+  date: string
+): Promise<GamesMatch | null> {
+  const { data, error } = await supabase
+    .from("games_matches")
+    .select("*")
+    .eq("mode", "daily_challenge")
+    .eq("game_type", gameType)
+    .eq("daily_date", date)
+    .eq("player_a_id", userId)
+    .eq("status", "finished")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+  return (data as unknown as GamesMatch[])?.[0] || null;
+}
+
+/** Save a completed daily challenge as a finished match */
+export async function saveDailyChallenge(
+  userId: string,
+  gameType: GameType,
+  dailyDate: string,
+  score: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("games_matches")
+    .insert({
+      game_type: gameType,
+      mode: "daily_challenge",
+      player_a_id: userId,
+      daily_date: dailyDate,
+      score_a: score,
+      status: "finished",
+      game_state: {},
+    } as never);
+
+  if (error) throw error;
+}
+
+/** Get consecutive-day play streak from games_daily_activity */
+export async function getDailyStreak(userId: string): Promise<number> {
+  const { data } = await supabase
+    .from("games_daily_activity")
+    .select("date")
+    .eq("user_id", userId)
+    .order("date", { ascending: false })
+    .limit(60);
+
+  if (!data || data.length === 0) return 0;
+
+  const today = new Date().toISOString().split("T")[0];
+  let streak = 0;
+  let current = today;
+
+  for (const row of data as { date: string }[]) {
+    if (row.date === current) {
+      streak++;
+      const d = new Date(current + "T12:00:00");
+      d.setDate(d.getDate() - 1);
+      current = d.toISOString().split("T")[0];
+    } else if (row.date < current) {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+/** Delete a match (and cascade to moves/reactions via FK) */
+export async function deleteMatch(matchId: string) {
+  const { error } = await supabase
+    .from("games_matches")
+    .delete()
+    .eq("id", matchId);
+  if (error) throw error;
+}
+
 /** Look up a user's display name from profiles */
 export async function getPlayerName(userId: string): Promise<string> {
   const { data } = await supabase

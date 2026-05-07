@@ -8,7 +8,7 @@ import ScoreCard from "./ScoreCard";
 
 const POINTS_PER_PAIR = 5;
 const STREAK_BONUS = 3;
-const FLIP_BACK_DELAY = 1500;
+const DEFAULT_FLIP_BACK_DELAY = 1500;
 
 interface Props {
   onBack: () => void;
@@ -16,10 +16,13 @@ interface Props {
   vsCards?: MemoryCard[];
   /** Called when VS game completes (instead of showing ScoreCard) */
   onVsComplete?: (result: GameResult) => void;
+  /** Override flip-back delay in ms (default 1500; daily challenge uses shorter) */
+  flipDelay?: number;
 }
 
-export default function MemoryMatch({ onBack, vsCards, onVsComplete }: Props) {
+export default function MemoryMatch({ onBack, vsCards, onVsComplete, flipDelay }: Props) {
   const { user } = useAuth();
+  const vsCardsRef = useRef(vsCards);
   const [matchId, setMatchId] = useState<string | null>(null);
   const [cards, setCards] = useState<MemoryCard[]>([]);
   const [flipped, setFlipped] = useState<number[]>([]); // indices of currently flipped cards (max 2)
@@ -33,12 +36,12 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete }: Props) {
   const [lastMatchedKey, setLastMatchedKey] = useState<string | null>(null);
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isVs = !!vsCards;
+  const isVs = !!vsCardsRef.current;
 
   const initGame = useCallback(async () => {
     if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
     const pairs = 8;
-    const deck = vsCards || buildCardDeck(pairs);
+    const deck = vsCardsRef.current || buildCardDeck(pairs);
     setCards(deck);
     setFlipped([]);
     setScore(0);
@@ -62,7 +65,7 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete }: Props) {
         // Game works without DB
       }
     }
-  }, [user, isVs, vsCards]);
+  }, [user, isVs]);
 
   useEffect(() => {
     initGame();
@@ -147,7 +150,7 @@ export default function MemoryMatch({ onBack, vsCards, onVsComplete }: Props) {
           );
           setFlipped([]);
           setIsChecking(false);
-        }, FLIP_BACK_DELAY);
+        }, flipDelay ?? DEFAULT_FLIP_BACK_DELAY);
       }
     }
   }

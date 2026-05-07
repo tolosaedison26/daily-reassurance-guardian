@@ -8,7 +8,7 @@ import {
   Users, CheckCircle2, Clock, AlertTriangle, Phone, UserX,
   MessageSquare, ShieldAlert, ChevronRight, Activity,
   Smile, TrendingUp, Pause, BellOff, RefreshCw, Trash2,
-  CalendarDays, BarChart3,
+  CalendarDays, BarChart3, Gamepad2,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -45,6 +45,7 @@ interface Stats {
   smsConsentPie: { name: string; value: number; fill: string }[];
   signupTrend: { date: string; count: number }[];
   responseTimeTrend: { date: string; avgMinutes: number }[];
+  gameTurns7d: { date: string; turns: number }[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -154,6 +155,7 @@ export default function AdminOverview() {
         { data: moodData },
         { data: alerts7dData },
         { data: allCheckins30d },
+        { data: gameActivity },
       ] = await Promise.all([
         supabase.from("seniors").select("id, paused, sms_consent_status, inactivity_warned_at, created_at"),
         supabase.from("emergency_contacts").select("id, opted_out, senior_id"),
@@ -177,6 +179,10 @@ export default function AdminOverview() {
           .from("check_ins")
           .select("senior_id, date, status, sent_at, responded_at")
           .gte("date", start30),
+        supabase
+          .from("games_daily_activity")
+          .select("date, turns_played")
+          .gte("date", startDate),
       ]);
 
       const seniorList = (seniors || []).filter((s) => !adminSeniorIds.includes(s.id));
@@ -288,6 +294,17 @@ export default function AdminOverview() {
         };
       });
 
+      // Game activity (7 days)
+      const gameTurnsMap: Record<string, number> = {};
+      days.forEach((d) => { gameTurnsMap[d] = 0; });
+      (gameActivity || []).forEach((row: { date: string; turns_played: number }) => {
+        if (gameTurnsMap[row.date] !== undefined) gameTurnsMap[row.date] += row.turns_played;
+      });
+      const gameTurns7d = days.map((d) => ({
+        date: new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        turns: gameTurnsMap[d],
+      }));
+
       // Senior names for alerts
       const alertSeniorIds = [...new Set((alerts || []).map((a) => a.senior_id))];
       let seniorNames: Record<string, string> = {};
@@ -329,6 +346,7 @@ export default function AdminOverview() {
         smsConsentPie,
         signupTrend,
         responseTimeTrend,
+        gameTurns7d,
       });
     } finally {
       setLoading(false);
@@ -624,6 +642,36 @@ export default function AdminOverview() {
                   </div>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 4: Game Activity */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4 text-primary" />
+              Game Activity (7d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.gameTurns7d.every((d) => d.turns === 0) ? (
+              <p className="text-sm text-muted-foreground py-12 text-center">No game activity yet</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={stats.gameTurns7d} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    {...CUSTOM_TOOLTIP_STYLE}
+                    formatter={(value: number) => [`${value}`, "Turns Played"]}
+                  />
+                  <Bar dataKey="turns" name="Turns" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>

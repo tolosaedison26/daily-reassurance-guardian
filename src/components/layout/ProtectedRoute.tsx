@@ -29,6 +29,11 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     return <Navigate to={`/login${redirectParam}`} replace />;
   }
 
+  // Anonymous (guest) users can only access /games routes
+  if (user.is_anonymous && !location.pathname.startsWith("/games")) {
+    return <Navigate to="/games" replace />;
+  }
+
   // Role-based redirect
   if (requiredRole && profile.role !== requiredRole) {
     if (profile.role === "admin") return <Navigate to="/admin" replace />;

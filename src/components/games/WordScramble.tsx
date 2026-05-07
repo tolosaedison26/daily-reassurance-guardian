@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Lightbulb, Check, RotateCcw, ArrowLeft } from "lucide-react";
 import { pickWords, scrambleWord } from "@/lib/games/helpers";
 import { createMatch, finishMatch, recordMove, trackDailyActivity } from "@/lib/games/client";
@@ -26,10 +26,13 @@ interface Props {
   vsWords?: string[];
   /** Called when VS game completes (instead of showing ScoreCard) */
   onVsComplete?: (result: GameResult) => void;
+  /** Hide the hint button (daily challenge hard mode) */
+  hideHint?: boolean;
 }
 
-export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
+export default function WordScramble({ onBack, vsWords, onVsComplete, hideHint }: Props) {
   const { user } = useAuth();
+  const vsWordsRef = useRef(vsWords);
   const [matchId, setMatchId] = useState<string | null>(null);
   const [words, setWords] = useState<string[]>([]);
   const [currentRound, setCurrentRound] = useState(0);
@@ -40,10 +43,10 @@ export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
   const [result, setResult] = useState<GameResult | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
 
-  const isVs = !!vsWords;
+  const isVs = !!vsWordsRef.current;
 
   const initGame = useCallback(async () => {
-    const gameWords = vsWords || pickWords(TOTAL_ROUNDS);
+    const gameWords = vsWordsRef.current || pickWords(TOTAL_ROUNDS);
     setWords(gameWords);
     setCurrentRound(0);
     setTotalScore(0);
@@ -65,7 +68,7 @@ export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
         // Game works without DB — just skip persistence
       }
     }
-  }, [user, isVs, vsWords]);
+  }, [user, isVs]);
 
   useEffect(() => {
     initGame();
@@ -348,14 +351,16 @@ export default function WordScramble({ onBack, vsWords, onVsComplete }: Props) {
 
       {/* Action buttons */}
       <div className="flex gap-3 justify-center mt-2">
-        <button
-          onClick={handleHint}
-          disabled={round.solved || round.hintPositions.size >= round.word.length - 1}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl text-base font-bold border-2 border-border text-muted-foreground hover:bg-muted min-h-[52px] transition-colors disabled:opacity-40"
-        >
-          <Lightbulb className="w-5 h-5" />
-          Hint
-        </button>
+        {!hideHint && (
+          <button
+            onClick={handleHint}
+            disabled={round.solved || round.hintPositions.size >= round.word.length - 1}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl text-base font-bold border-2 border-border text-muted-foreground hover:bg-muted min-h-[52px] transition-colors disabled:opacity-40"
+          >
+            <Lightbulb className="w-5 h-5" />
+            Hint
+          </button>
+        )}
         <button
           onClick={handleClear}
           disabled={round.solved || round.selected.length === 0}

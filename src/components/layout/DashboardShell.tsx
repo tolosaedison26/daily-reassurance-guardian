@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Home, Users, Settings, LogOut, Shield, HelpCircle, Briefcase, Pill, Gamepad2 } from "lucide-react";
+import { Home, Users, Settings, LogOut, Shield, HelpCircle, Briefcase, Pill, Gamepad2, UserPlus } from "lucide-react";
 import DashboardGuide from "@/components/DashboardGuide";
 
 const navItems = [
@@ -17,11 +17,19 @@ const navItems = [
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [showGuide, setShowGuide] = useState(false);
 
+  const isGuest = !!user?.is_anonymous;
+  const visibleNav = isGuest ? navItems.filter((item) => item.path === "/games") : navItems;
+
   const isActive = (path: string) => location.pathname === path;
+
+  async function handleCreateAccount() {
+    await signOut();
+    navigate("/register");
+  }
 
   if (isMobile) {
     return (
@@ -32,13 +40,25 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <Shield className="w-4 h-4 text-primary" />
             <span className="text-sm font-black text-primary">Daily Guardian</span>
           </div>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-destructive transition-colors min-h-[44px] px-2"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
+          <div className="flex items-center gap-2">
+            {isGuest ? (
+              <button
+                onClick={handleCreateAccount}
+                className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:opacity-80 transition-opacity min-h-[44px] px-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                Create Account
+              </button>
+            ) : (
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-destructive transition-colors min-h-[44px] px-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto pb-16">
@@ -48,7 +68,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         {/* Bottom navigation */}
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border">
           <div className="flex items-center justify-around max-w-lg mx-auto">
-            {navItems.map((item) => (
+            {visibleNav.map((item) => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
@@ -61,15 +81,17 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 <span className="text-[11px] font-bold">{item.label}</span>
               </button>
             ))}
-            <button
-              onClick={() => setShowGuide(true)}
-              aria-label="Help"
-              className="flex flex-col items-center gap-0.5 py-2 px-3 min-w-[64px] min-h-[52px] transition-colors"
-              style={{ color: "hsl(var(--muted-foreground))" }}
-            >
-              <HelpCircle className="w-5 h-5" aria-hidden="true" />
-              <span className="text-[11px] font-bold">Help</span>
-            </button>
+            {!isGuest && (
+              <button
+                onClick={() => setShowGuide(true)}
+                aria-label="Help"
+                className="flex flex-col items-center gap-0.5 py-2 px-3 min-w-[64px] min-h-[52px] transition-colors"
+                style={{ color: "hsl(var(--muted-foreground))" }}
+              >
+                <HelpCircle className="w-5 h-5" aria-hidden="true" />
+                <span className="text-[11px] font-bold">Help</span>
+              </button>
+            )}
           </div>
         </nav>
 
@@ -91,7 +113,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
         {/* Nav items */}
         <nav className="flex-1 px-3 space-y-1">
-          {navItems.map((item) => (
+          {visibleNav.map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
@@ -108,26 +130,38 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             </button>
           ))}
 
-          {/* Help / Guide */}
-          <button
-            onClick={() => setShowGuide(true)}
-            aria-label="Help"
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors min-h-[52px]"
-          >
-            <HelpCircle className="w-5 h-5" aria-hidden="true" />
-            Help
-          </button>
+          {/* Help / Guide — hidden for guests */}
+          {!isGuest && (
+            <button
+              onClick={() => setShowGuide(true)}
+              aria-label="Help"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors min-h-[52px]"
+            >
+              <HelpCircle className="w-5 h-5" aria-hidden="true" />
+              Help
+            </button>
+          )}
         </nav>
 
-        {/* Sign out — sticky at bottom of sidebar */}
-        <div className="px-3 pb-6">
-          <button
-            onClick={signOut}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors min-h-[52px]"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
+        {/* Bottom actions */}
+        <div className="px-3 pb-6 space-y-1">
+          {isGuest ? (
+            <button
+              onClick={handleCreateAccount}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-primary hover:bg-primary/10 transition-colors min-h-[52px]"
+            >
+              <UserPlus className="w-5 h-5" />
+              Create Account
+            </button>
+          ) : (
+            <button
+              onClick={signOut}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors min-h-[52px]"
+            >
+              <LogOut className="w-5 h-5" />
+              Sign Out
+            </button>
+          )}
         </div>
       </aside>
 
