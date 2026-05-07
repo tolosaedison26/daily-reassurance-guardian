@@ -26,6 +26,7 @@ import ContactPage from "./pages/ContactPage";
 import SeniorHome from "./pages/SeniorHome";
 import EmergencyContactsPage from "./pages/EmergencyContactsPage";
 import MedicationsPage from "./pages/MedicationsPage";
+import GamesPage from "./pages/GamesPage";
 import ServicesPage from "./pages/ServicesPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
 
@@ -86,6 +87,7 @@ const App = () => (
             {/* Protected: Senior portal (DashboardShell) */}
             <Route path="/home" element={<SeniorShell><SeniorHome /></SeniorShell>} />
             <Route path="/medications" element={<SeniorShell><MedicationsPage /></SeniorShell>} />
+            <Route path="/games" element={<SeniorShell><GamesPage /></SeniorShell>} />
             <Route path="/contacts" element={<SeniorShell><EmergencyContactsPage /></SeniorShell>} />
             <Route path="/services" element={<SeniorShell><ServicesPage /></SeniorShell>} />
             <Route path="/settings" element={<SeniorShell><AccountSettingsPage /></SeniorShell>} />

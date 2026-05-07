@@ -2,12 +2,13 @@ import { ReactNode, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Home, Users, Settings, LogOut, Shield, HelpCircle, Briefcase, Pill } from "lucide-react";
+import { Home, Users, Settings, LogOut, Shield, HelpCircle, Briefcase, Pill, Gamepad2 } from "lucide-react";
 import DashboardGuide from "@/components/DashboardGuide";
 
 const navItems = [
   { path: "/home", label: "Home", icon: Home },
   { path: "/medications", label: "Medications", icon: Pill },
+  { path: "/games", label: "Games", icon: Gamepad2 },
   { path: "/services", label: "Services", icon: Briefcase },
   { path: "/contacts", label: "Contacts", icon: Users },
   { path: "/settings", label: "Settings", icon: Settings },
