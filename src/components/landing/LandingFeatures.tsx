@@ -1,4 +1,4 @@
-import { SmartphoneNfc, GitBranch, Heart, Pill, Bell, Shield } from "lucide-react";
+import { SmartphoneNfc, GitBranch, Heart, Pill, Bell, Shield, Gamepad2, Volume2 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 const iconColors = [
@@ -42,6 +42,18 @@ const features = [
     icon: Bell,
     title: "Weekly Summaries",
     desc: "Your emergency contacts receive a weekly SMS with your check-in summary. Keeps everyone in the loop without daily notifications.",
+    ci: 2,
+  },
+  {
+    icon: Gamepad2,
+    title: "Brain Games",
+    desc: "Two brain games included at no extra cost — Word Scramble and Memory Match. Play solo, challenge a friend in a VS match, or tackle a daily challenge every morning.",
+    ci: 0,
+  },
+  {
+    icon: Volume2,
+    title: "Calming Sounds",
+    desc: "11 nature and ambient tracks to help you relax — ocean waves, gentle rain, forest, campfire, singing bowl, night ambience, and more. No headphones required.",
     ci: 2,
   },
 ];

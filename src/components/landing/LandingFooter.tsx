@@ -23,7 +23,10 @@ export default function LandingFooter() {
             <ul className="space-y-1 text-sm text-muted-foreground">
               <li><a href="#how-it-works" className="hover:text-foreground transition-colors cursor-pointer py-2 inline-block">How It Works</a></li>
               <li><a href="#features" className="hover:text-foreground transition-colors cursor-pointer py-2 inline-block">Features</a></li>
+              <li><a href="#games" className="hover:text-foreground transition-colors cursor-pointer py-2 inline-block">Brain Games</a></li>
+              <li><a href="#sounds" className="hover:text-foreground transition-colors cursor-pointer py-2 inline-block">Calming Sounds</a></li>
               <li><a href="#pricing" className="hover:text-foreground transition-colors cursor-pointer py-2 inline-block">Pricing</a></li>
+              <li><a href="#faq" className="hover:text-foreground transition-colors cursor-pointer py-2 inline-block">FAQ</a></li>
             </ul>
           </div>
 

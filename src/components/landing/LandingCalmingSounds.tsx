@@ -60,7 +60,7 @@ export default function LandingCalmingSounds({ onGetStarted }: Props) {
   const playingSound = sounds.find((s) => s.id === playingId);
 
   return (
-    <section className="py-14 sm:py-16 md:py-20 bg-section-alt">
+    <section id="sounds" className="py-14 sm:py-16 md:py-20 bg-section-alt">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
 
         {/* Compact header — inline label + headline */}
@@ -69,7 +69,7 @@ export default function LandingCalmingSounds({ onGetStarted }: Props) {
             <div className="flex items-center gap-2 mb-2">
               <Volume2 className="w-4 h-4" style={{ color: "hsl(200 70% 45%)" }} />
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Included with your account
+                Calming Sounds
               </span>
             </div>
             <h2

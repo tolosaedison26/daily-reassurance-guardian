@@ -21,6 +21,7 @@ export default function LandingNav({ onGetStarted, onSignIn }: LandingNavProps) 
     { label: "Features", href: "#features" },
     { label: "How It Works", href: "#how-it-works" },
     { label: "Pricing", href: "#pricing" },
+    { label: "FAQ", href: "#faq" },
   ];
 
   const scrollTo = (href: string) => {

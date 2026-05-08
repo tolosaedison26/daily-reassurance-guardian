@@ -12,6 +12,8 @@ const features = [
   "Up to 3 emergency contacts",
   "Smart escalation alerts",
   "Mood tracking & weekly reports",
+  "Brain games — Word Scramble & Memory Match",
+  "Calming sounds & nature ambiance",
 ];
 
 export default function LandingPricing({ onGetStarted }: LandingPricingProps) {

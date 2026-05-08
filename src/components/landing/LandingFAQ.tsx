@@ -30,6 +30,14 @@ const faqs = [
     q: "What does it cost?",
     a: "Daily Guardian is completely free during our early launch period. No credit card required. No hidden fees.",
   },
+  {
+    q: "Are the brain games free?",
+    a: "Yes. Word Scramble and Memory Match are included at no extra cost. Play solo at your own pace, challenge a friend or family member with a VS match using a 6-character invite code, or take on a fresh daily challenge every morning.",
+  },
+  {
+    q: "What calming sounds are available?",
+    a: "Daily Guardian includes 11 nature and ambient sound tracks — ocean waves, gentle rain, forest, campfire, singing bowl, night ambience, and more. You can preview 6 of them right on this page. All tracks are available in your dashboard at no extra cost.",
+  },
 ];
 
 export default function LandingFAQ() {

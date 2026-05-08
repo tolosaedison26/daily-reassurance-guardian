@@ -46,7 +46,7 @@ export default function LandingGames() {
   );
 
   return (
-    <section className="py-16 sm:py-20 md:py-24 bg-background relative overflow-hidden">
+    <section id="games" className="py-16 sm:py-20 md:py-24 bg-background relative overflow-hidden">
       {/* Subtle decorative accent — brand orange, very low opacity */}
       <div
         className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none"
@@ -69,7 +69,7 @@ export default function LandingGames() {
               <Gamepad2 className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
             </div>
             <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Included with your account
+              Brain Games
             </span>
           </div>
 
