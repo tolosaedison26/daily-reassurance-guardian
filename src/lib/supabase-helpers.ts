@@ -115,6 +115,8 @@ const N8N_BASE = "https://n8n.srv1333522.hstgr.cloud/webhook";
 const SMS_WEBHOOK_URL = `${N8N_BASE}/sms-opt-in-requested`;
 const EC_WEBHOOK_URL = `${N8N_BASE}/emergency-contact-added`;
 
+const REGISTRATION_WEBHOOK_URL = `${N8N_BASE}/new-registration-alert`;
+
 /**
  * Trigger SMS opt-in (sends confirmation SMS) or opt-out (sends unsubscribe SMS).
  * Fire-and-forget — does not block UI.
@@ -151,6 +153,23 @@ export async function triggerSmsWebhook(
   } catch {
     // silent — SMS webhook is best-effort
   }
+}
+
+/**
+ * Send a Slack notification when a new user registers.
+ * Includes order number and a note to manually verify in admin console.
+ * Fire-and-forget — does not block UI.
+ */
+export function notifyRegistrationSlack(payload: {
+  name: string;
+  phone: string;
+  order_number: string;
+}) {
+  fetch(REGISTRATION_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {}); // fire-and-forget
 }
 
 /**

@@ -407,6 +407,7 @@ export type Database = {
           inactivity_warned_at: string | null
           name: string
           name_changed_at: string | null
+          order_number: string | null
           paused: boolean | null
           phone: string
           previous_name: string | null
@@ -428,6 +429,7 @@ export type Database = {
           inactivity_warned_at?: string | null
           name: string
           name_changed_at?: string | null
+          order_number?: string | null
           paused?: boolean | null
           phone: string
           previous_name?: string | null
@@ -449,6 +451,7 @@ export type Database = {
           inactivity_warned_at?: string | null
           name?: string
           name_changed_at?: string | null
+          order_number?: string | null
           paused?: boolean | null
           phone?: string
           previous_name?: string | null

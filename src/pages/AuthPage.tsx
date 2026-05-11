@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { triggerSmsWebhook, normalizePhone, formatPhoneDisplay } from "@/lib/supabase-helpers";
+import { triggerSmsWebhook, normalizePhone, formatPhoneDisplay, notifyRegistrationSlack } from "@/lib/supabase-helpers";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -26,6 +26,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("+1 ");
+  const [orderNumber, setOrderNumber] = useState("");
   const [smsConsent, setSmsConsent] = useState(true);
   const [tosAccepted, setTosAccepted] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -99,6 +100,7 @@ export default function AuthPage() {
           const updates: Record<string, any> = {};
           if (cleanPhone.length >= 10) updates.phone = cleanPhone;
           if (smsConsent) updates.sms_consent_status = "requested";
+          if (orderNumber.trim()) updates.order_number = orderNumber.trim();
           // Set timezone from browser so check-in time (6 PM) is in the user's local time
           const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
           if (detectedTz) updates.timezone = detectedTz;
@@ -113,6 +115,12 @@ export default function AuthPage() {
         if (cleanPhone.length >= 10) {
           await supabase.from("profiles").update({ phone: cleanPhone }).eq("user_id", userId);
         }
+        // Notify Slack of new registration
+        notifyRegistrationSlack({
+          name: fullName,
+          phone: cleanPhone,
+          order_number: orderNumber.trim(),
+        });
         // All saves done — now allow navigation
         setSignupInProgress(false);
         navigate("/home", { replace: true });
@@ -201,6 +209,25 @@ export default function AuthPage() {
                   Enter your 10-digit mobile number. It will auto-format as you type.<br />
                   <span className="font-semibold">Example:</span> +1 (555) 123-4567<br />
                   We'll send your daily check-in SMS to this number.
+                </p>
+              </div>
+            )}
+            {mode === "signup" && (
+              <div>
+                <Label htmlFor="orderNumber" className="text-base font-bold">Order Number</Label>
+                <Input
+                  id="orderNumber"
+                  type="text"
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value)}
+                  placeholder="e.g. 123456"
+                  required
+                  className="mt-1 h-12 text-base rounded-xl"
+                />
+                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  Enter your order number from your{" "}
+                  <a href="https://www.edwardcreation.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold underline underline-offset-2 hover:no-underline">Edward Creation</a>
+                  {" "}purchase.
                 </p>
               </div>
             )}

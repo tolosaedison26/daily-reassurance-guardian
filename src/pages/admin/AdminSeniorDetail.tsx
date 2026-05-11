@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Phone, Clock, Shield, User, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Phone, Clock, Shield, User, RefreshCw, Trash2, Hash } from "lucide-react";
 
 interface SeniorInfo {
   id: string;
@@ -24,6 +24,7 @@ interface SeniorInfo {
   sms_consent_status: string | null;
   timezone: string | null;
   grace_period_minutes: number | null;
+  order_number: string | null;
   created_at: string;
 }
 
@@ -81,7 +82,7 @@ export default function AdminSeniorDetail() {
       ] = await Promise.all([
         supabase
           .from("seniors")
-          .select("id, profile_id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, created_at")
+          .select("id, profile_id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, order_number, created_at")
           .eq("id", seniorId)
           .maybeSingle(),
         supabase
@@ -154,6 +155,7 @@ export default function AdminSeniorDetail() {
 
   const infoItems = [
     { icon: User, label: "Name", value: senior.name || "—" },
+    { icon: Hash, label: "Order #", value: senior.order_number || "—" },
     { icon: Phone, label: "Phone", value: senior.phone || "—" },
     {
       icon: Clock,
@@ -211,7 +213,7 @@ export default function AdminSeniorDetail() {
       </div>
 
       {/* Senior info cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {infoItems.map((item) => (
           <Card key={item.label} className="border-0 shadow-sm">
             <CardContent className="p-4">
@@ -221,7 +223,7 @@ export default function AdminSeniorDetail() {
                   {item.label}
                 </span>
               </div>
-              <p className="text-sm font-bold truncate">{item.value}</p>
+              <p className="text-sm font-bold break-all">{item.value}</p>
             </CardContent>
           </Card>
         ))}

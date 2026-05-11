@@ -24,6 +24,7 @@ interface Senior {
   sms_consent_status: string | null;
   timezone: string | null;
   grace_period_minutes: number | null;
+  order_number: string | null;
   created_at: string;
   profile_id: string;
   ec_count: number;
@@ -108,7 +109,7 @@ export default function AdminSeniors() {
         await Promise.all([
           supabase
             .from("seniors")
-            .select("id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, created_at, profile_id")
+            .select("id, name, phone, check_in_time, paused, sms_consent_status, timezone, grace_period_minutes, order_number, created_at, profile_id")
             .order("created_at", { ascending: false }),
           supabase.from("emergency_contacts").select("senior_id"),
           supabase
@@ -155,9 +156,11 @@ export default function AdminSeniors() {
   }
 
   const filtered = seniors.filter((s) => {
+    const q = search.toLowerCase();
     const matchesSearch =
-      (s.name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.phone || "").includes(search);
+      (s.name || "").toLowerCase().includes(q) ||
+      (s.phone || "").includes(search) ||
+      (s.order_number || "").toLowerCase().includes(q);
     if (!matchesSearch) return false;
 
     if (smsFilter) {
@@ -230,6 +233,7 @@ export default function AdminSeniors() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Name</TableHead>
+                    <TableHead className="font-bold">Order #</TableHead>
                     <TableHead className="font-bold">Phone</TableHead>
                     <TableHead className="font-bold">Check-In Time</TableHead>
                     <TableHead className="font-bold">SMS Status</TableHead>
@@ -244,7 +248,7 @@ export default function AdminSeniors() {
                   {filtered.map((s) => (
                     confirmDeleteId === s.profile_id ? (
                       <TableRow key={s.id} className="bg-destructive/5">
-                        <TableCell colSpan={7} className="py-3">
+                        <TableCell colSpan={8} className="py-3">
                           <span className="text-sm font-semibold text-foreground">
                             Delete <span className="text-destructive">{s.name}</span>? This cannot be undone.
                           </span>
@@ -277,6 +281,9 @@ export default function AdminSeniors() {
                     >
                       <TableCell className="font-semibold">
                         {s.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm font-mono whitespace-nowrap">
+                        {s.order_number || <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground font-mono">
                         {s.phone || "—"}
