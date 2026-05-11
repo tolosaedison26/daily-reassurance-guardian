@@ -41,7 +41,10 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <span className="font-semibold">Account information:</span> Your name,
-                email address, and phone number when you create an account.
+                email address, phone number, and{" "}
+                <a href="https://www.edwardcreation.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Edward Creation</a>{" "}
+                order number when you create an account. Your order number is used
+                solely to verify your eligibility for the free service.
               </li>
               <li>
                 <span className="font-semibold">Emergency contacts:</span> Names and
@@ -52,6 +55,18 @@ export default function PrivacyPage() {
                 <span className="font-semibold">Check-in data:</span> Your daily
                 check-in time preference, check-in history, mood responses, and
                 response timestamps.
+              </li>
+              <li>
+                <span className="font-semibold">Medication data:</span> Medication
+                names, dosages, frequencies, scheduled times, and daily dose tracking
+                (taken/skipped status). This information is used only to display your
+                medication schedule and send you optional morning reminders.
+              </li>
+              <li>
+                <span className="font-semibold">Game activity:</span> Scores, match
+                history, daily challenge participation, and VS match data for the
+                brain games feature. This data is used to display your stats and
+                enable multiplayer matches.
               </li>
               <li>
                 <span className="font-semibold">Device information:</span> Basic
@@ -66,8 +81,12 @@ export default function PrivacyPage() {
             <p className="mb-3">Your information is used solely to provide and improve the Daily Guardian service:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Send you daily check-in reminders via SMS at your scheduled time.</li>
+              <li>Send you daily medication reminders via SMS if you have active medications.</li>
               <li>Notify your emergency contacts if you miss a check-in.</li>
-              <li>Display your check-in history and mood trends on your dashboard.</li>
+              <li>Display your check-in history, mood trends, and medication schedule on your dashboard.</li>
+              <li>Provide brain games (Word Scramble, Memory Match) including solo, daily challenge, and VS multiplayer modes.</li>
+              <li>Provide calming ambient sounds for relaxation and well-being.</li>
+              <li>Verify your Edward Creation order number to confirm service eligibility.</li>
               <li>Authenticate your identity when you sign in.</li>
               <li>Send important service updates (such as changes to our terms).</li>
             </ul>
@@ -123,8 +142,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <span className="font-semibold">Message frequency:</span> Approximately
-                1–3 SMS messages per day (one daily check-in, plus safety alerts only
-                if a check-in is missed).
+                1–4 SMS messages per day (one daily check-in, one optional medication
+                reminder, plus safety alerts only if a check-in is missed).
               </li>
               <li>
                 <span className="font-semibold">To opt out:</span> Reply{" "}
@@ -207,12 +226,19 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-black mb-3">8. Data Retention</h2>
-            <p>
+            <p className="mb-3">
               We retain your data for as long as your account is active. If you delete
               your account, we will remove all your personal data, check-in records,
-              and emergency contact information within 30 days. Some anonymized,
-              aggregated data (such as total check-in counts) may be retained for
-              service improvement purposes.
+              medication data, game history, and emergency contact information within
+              30 days. Some anonymized, aggregated data (such as total check-in counts)
+              may be retained for service improvement purposes.
+            </p>
+            <p>
+              <span className="font-semibold">Inactive accounts:</span> If your
+              account shows no activity (no check-ins, no logins, no app usage) for
+              5 consecutive days and you have not paused check-ins, your account and
+              all associated data may be automatically deleted to maintain service
+              quality and data hygiene.
             </p>
           </section>
 
