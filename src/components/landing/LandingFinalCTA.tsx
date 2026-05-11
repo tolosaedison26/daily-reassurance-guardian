@@ -56,7 +56,9 @@ export default function LandingFinalCTA({ onGetStarted }: LandingFinalCTAProps) 
           className={`fade-up mt-5 text-sm text-muted-foreground ${isVisible ? "visible" : ""}`}
           style={{ transitionDelay: "200ms" }}
         >
-          No credit card required. Takes less than 2 minutes.
+          Free for{" "}
+          <a href="https://www.edwardcreation.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold underline underline-offset-2 hover:no-underline">Edward Creation</a>
+          {" "}customers. No credit card required.
         </p>
       </div>
     </section>

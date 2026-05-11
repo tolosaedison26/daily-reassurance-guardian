@@ -113,7 +113,12 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
             </div>
 
             {/* Trust line */}
-            <div className="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm text-muted-foreground">
+            <p className="mt-4 text-sm font-semibold text-primary">
+              Free exclusively for{" "}
+              <a href="https://www.edwardcreation.com/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:no-underline">Edward Creation</a>
+              {" "}customers
+            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Check className="w-4 h-4" style={{ color: "hsl(var(--status-checked))" }} />
                 No credit card

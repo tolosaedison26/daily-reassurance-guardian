@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     q: "What does it cost?",
-    a: "Daily Guardian is completely free during our early launch period. No credit card required. No hidden fees.",
+    a: "Daily Guardian is completely free for Edward Creation customers. Just enter your order number when you sign up — no credit card required, no hidden fees.",
   },
   {
     q: "Are the brain games free?",

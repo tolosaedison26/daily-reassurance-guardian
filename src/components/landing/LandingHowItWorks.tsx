@@ -6,7 +6,7 @@ const steps = [
     num: 1,
     icon: UserPlus,
     title: "Create your account",
-    desc: "Sign up with your name, phone, and email. Add emergency contacts, set your check-in time, and add your medications — all during onboarding.",
+    desc: "Sign up with your name, phone, email, and Edward Creation order number. Add emergency contacts, set your check-in time, and add your medications — all during onboarding.",
     color: "hsl(var(--primary))",
   },
   {

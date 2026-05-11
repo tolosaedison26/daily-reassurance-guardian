@@ -27,10 +27,12 @@ export default function LandingPricing({ onGetStarted }: LandingPricingProps) {
             className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground"
             style={{ letterSpacing: "-0.03em" }}
           >
-            Free While We Launch
+            Free for Edward Creation Customers
           </h2>
           <p className="mt-4 text-lg md:text-xl text-muted-foreground">
-            No credit card required. No hidden fees. Just peace of mind.
+            As an{" "}
+            <a href="https://www.edwardcreation.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold underline underline-offset-2 hover:no-underline">Edward Creation</a>
+            {" "}customer, you get full access at no cost. No credit card required.
           </p>
         </div>
 
@@ -44,9 +46,12 @@ export default function LandingPricing({ onGetStarted }: LandingPricingProps) {
 
             {/* Price header */}
             <div className="p-6 sm:p-8 text-center">
-              <p className="text-sm font-medium text-primary">Early Access</p>
-              <p className="mt-2 text-5xl font-black text-foreground">Free</p>
-              <p className="mt-1 text-base text-muted-foreground">Free during our launch period</p>
+              <p className="text-sm font-semibold text-primary">Edward Creation Exclusive</p>
+              <div className="mt-2 flex items-center justify-center gap-3">
+                <span className="text-2xl font-bold text-muted-foreground line-through">$15/mo</span>
+                <span className="text-5xl font-black text-foreground">Free</span>
+              </div>
+              <p className="mt-1 text-base text-muted-foreground">Free with your Edward Creation order number</p>
             </div>
 
             <hr className="border-border/60 mx-6 sm:mx-8 border-dashed" />
@@ -74,7 +79,7 @@ export default function LandingPricing({ onGetStarted }: LandingPricingProps) {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <p className="mt-3 text-sm text-center text-muted-foreground">
-                No credit card required
+                No credit card required — just your order number
               </p>
             </div>
           </div>
